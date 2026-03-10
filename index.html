@@ -428,10 +428,77 @@
   }
   .url-input:focus { border-color: var(--accent); }
   .url-input::placeholder { color: var(--muted); }
+
+  /* ── API SETTINGS BAR ── */
+  .api-bar {
+    background: var(--header-bg);
+    border-bottom: 2px solid var(--border);
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .api-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .api-input {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 5px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .api-input:focus { border-color: var(--accent); }
+  .api-input::placeholder { color: var(--muted); }
+  .api-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .api-status.set { color: var(--accent3); }
+  .api-status.unset { color: var(--muted); }
+
+  /* ── SIM RESULT ON CARD ── */
+  .card-sim-result {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    margin-top: 3px;
+  }
+  .card-sim-result a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .card-sim-result a:hover { text-decoration: underline; }
+  .card-sim-result.pending { color: var(--muted); }
+  .card-sim-result.error { color: #ff7070; }
+  .card-btn-runsim {
+    background: rgba(48,216,255,0.08);
+    border-color: rgba(48,216,255,0.3);
+    color: var(--accent);
+  }
+  .card-btn-runsim:hover { background: rgba(48,216,255,0.18); }
+  .card-btn-runsim:disabled { opacity: 0.4; cursor: not-allowed; }
+
 </style>
 </head>
 <body>
 <div class="app-wrapper">
+<div class="api-bar">
+  <span class="api-label">RAIDSID COOKIE</span>
+  <input type="password" id="raidsidInput" class="api-input" placeholder="Paste your raidsid= cookie value here (saved locally in your browser)" oninput="saveRaidsid()" />
+  <span class="api-label">→ find it in DevTools → Network → any raidbots.com request → Request Headers → Cookie → copy the raidsid=... value</span>
+  <span class="api-status unset" id="raidsidStatus">NOT SET</span>
+</div>
 
 <header>
   <div>
@@ -1219,7 +1286,7 @@ function renderHistory() {
 
     var tierBtn = document.createElement('button');
     tierBtn.className = 'card-btn card-btn-tier';
-    tierBtn.textContent = 'TIER';
+    tierBtn.textContent = 'COPY TIER';
     tierBtn.setAttribute('data-id', entryId);
     tierBtn.setAttribute('data-type', 'tier');
     tierBtn.addEventListener('click', function() {
@@ -1228,11 +1295,27 @@ function renderHistory() {
 
     var trinketBtn = document.createElement('button');
     trinketBtn.className = 'card-btn card-btn-trinket';
-    trinketBtn.textContent = 'TRINKETS';
+    trinketBtn.textContent = 'COPY TRK';
     trinketBtn.setAttribute('data-id', entryId);
     trinketBtn.setAttribute('data-type', 'trinket');
     trinketBtn.addEventListener('click', function() {
       handleCardCopy(parseInt(this.getAttribute('data-id')), this.getAttribute('data-type'), this);
+    });
+
+    var runTierBtn = document.createElement('button');
+    runTierBtn.className = 'card-btn card-btn-runsim';
+    runTierBtn.textContent = 'RUN TIER';
+    runTierBtn.setAttribute('data-id', entryId);
+    runTierBtn.addEventListener('click', function() {
+      runSim(parseInt(this.getAttribute('data-id')), 'tier', this);
+    });
+
+    var runTrinketBtn = document.createElement('button');
+    runTrinketBtn.className = 'card-btn card-btn-runsim';
+    runTrinketBtn.textContent = 'RUN TRK';
+    runTrinketBtn.setAttribute('data-id', entryId);
+    runTrinketBtn.addEventListener('click', function() {
+      runSim(parseInt(this.getAttribute('data-id')), 'trinket', this);
     });
 
     var delBtn = document.createElement('button');
@@ -1245,6 +1328,8 @@ function renderHistory() {
 
     btns.appendChild(tierBtn);
     btns.appendChild(trinketBtn);
+    btns.appendChild(runTierBtn);
+    btns.appendChild(runTrinketBtn);
     card.appendChild(dot);
     card.appendChild(info);
     card.appendChild(btns);
@@ -1348,6 +1433,138 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+
+// ── RAIDSID / AUTO SIM ───────────────────────────────────────────────────────
+
+function saveRaidsid() {
+  const val = document.getElementById('raidsidInput').value.trim();
+  if (val) {
+    localStorage.setItem('raidsid', val);
+    document.getElementById('raidsidStatus').textContent = '✓ SAVED';
+    document.getElementById('raidsidStatus').className = 'api-status set';
+  } else {
+    localStorage.removeItem('raidsid');
+    document.getElementById('raidsidStatus').textContent = 'NOT SET';
+    document.getElementById('raidsidStatus').className = 'api-status unset';
+  }
+}
+
+function loadRaidsid() {
+  const saved = localStorage.getItem('raidsid');
+  if (saved) {
+    document.getElementById('raidsidInput').value = saved;
+    document.getElementById('raidsidStatus').textContent = '✓ SAVED';
+    document.getElementById('raidsidStatus').className = 'api-status set';
+  }
+}
+
+async function runSim(id, type, btn) {
+  const raidsid = localStorage.getItem('raidsid');
+  if (!raidsid) {
+    alert('Please enter your raidsid cookie value at the top first!');
+    return;
+  }
+
+  var entry = null;
+  for (var i = 0; i < profileHistory.length; i++) {
+    if (profileHistory[i].id === id) { entry = profileHistory[i]; break; }
+  }
+  if (!entry) return;
+
+  const simText = type === 'tier' ? entry.tierOutput : entry.trinketOutput;
+  if (!simText) return;
+
+  btn.disabled = true;
+  btn.textContent = 'SUBMITTING...';
+
+  // Update card status
+  const card = btn.closest('.card');
+  let resultEl = card.querySelector('.card-sim-result-' + type);
+  if (!resultEl) {
+    resultEl = document.createElement('div');
+    resultEl.className = 'card-sim-result pending card-sim-result-' + type;
+    card.querySelector('.card-info').appendChild(resultEl);
+  }
+  resultEl.textContent = '⏳ Submitting...';
+  resultEl.className = 'card-sim-result pending card-sim-result-' + type;
+
+  try {
+    const resp = await fetch('https://winter-mode-c018.drolcpusj.workers.dev/sim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Raidsid': raidsid,
+      },
+      body: JSON.stringify({
+        type: 'advanced',
+        text: '',
+        advancedInput: simText
+      })
+    });
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const jobId = data.job && data.job.id ? data.job.id : (data.simId || data.id);
+
+    if (!jobId) throw new Error('No job ID in response');
+
+    const resultUrl = 'https://www.raidbots.com/simbot/report/' + jobId;
+    resultEl.className = 'card-sim-result card-sim-result-' + type;
+    resultEl.innerHTML = (type === 'tier' ? '🟠 TIER: ' : '🟢 TRK: ') + '<a href="' + resultUrl + '" target="_blank">' + jobId + '</a>';
+
+    btn.textContent = '✓ RUNNING';
+    btn.style.background = 'rgba(48,216,255,0.2)';
+
+    // Poll for completion
+    pollSim(jobId, resultEl, type);
+
+  } catch(err) {
+    resultEl.textContent = '✗ Error: ' + err.message;
+    resultEl.className = 'card-sim-result error card-sim-result-' + type;
+    btn.textContent = type === 'tier' ? 'RUN TIER' : 'RUN TRK';
+    btn.disabled = false;
+    btn.style.background = '';
+    console.error('Sim submission error:', err);
+  }
+}
+
+async function pollSim(jobId, resultEl, type) {
+  const maxAttempts = 60;
+  let attempts = 0;
+
+  const interval = setInterval(async () => {
+    attempts++;
+    if (attempts > maxAttempts) {
+      clearInterval(interval);
+      return;
+    }
+    try {
+      const resp = await fetch('https://winter-mode-c018.drolcpusj.workers.dev/job/' + jobId);
+      const data = await resp.json();
+      const job = data.job || data;
+      const status = job.state || job.status;
+
+      if (status === 'complete' || status === 'finished') {
+        clearInterval(interval);
+        const url = 'https://www.raidbots.com/simbot/report/' + jobId;
+        resultEl.innerHTML = (type === 'tier' ? '🟠 TIER: ' : '🟢 TRK: ') + '<a href="' + url + '" target="_blank">✓ DONE → VIEW REPORT</a>';
+        resultEl.className = 'card-sim-result card-sim-result-' + type;
+      } else if (status === 'failed' || status === 'error') {
+        clearInterval(interval);
+        resultEl.textContent = '✗ Sim failed';
+        resultEl.className = 'card-sim-result error card-sim-result-' + type;
+      } else {
+        const pos = job.position || job.queuePosition;
+        resultEl.innerHTML = (type === 'tier' ? '🟠 TIER: ' : '🟢 TRK: ') +
+          '<a href="https://www.raidbots.com/simbot/report/' + jobId + '" target="_blank">' +
+          (pos ? 'Queue #' + pos : status || 'running...') + '</a>';
+      }
+    } catch(e) { /* ignore poll errors */ }
+  }, 5000);
+}
+
+document.addEventListener('DOMContentLoaded', loadRaidsid);
 
 </script>
 
