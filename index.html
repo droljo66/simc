@@ -489,6 +489,142 @@
   .card-btn-runsim:hover { background: rgba(48,216,255,0.18); }
   .card-btn-runsim:disabled { opacity: 0.4; cursor: not-allowed; }
 
+
+  /* ── MAIN NAV TABS ── */
+  .main-nav {
+    display: flex;
+    background: var(--header-bg);
+    border-bottom: 2px solid var(--border);
+    flex-shrink: 0;
+  }
+  .main-nav-tab {
+    padding: 11px 28px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .main-nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .main-nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--panel); }
+  .main-nav-tab.hist-tab.active { color: var(--accent3); border-bottom-color: var(--accent3); }
+
+  /* ── PERSISTENT HISTORY PAGE ── */
+  .page { display: none; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+  .page.active { display: flex; }
+
+  .hist-page {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 28px;
+  }
+  .hist-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hist-page-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+  .hist-page-title span { color: var(--accent3); }
+  .hist-count {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .hist-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .hist-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 12px 14px;
+    width: 300px;
+    position: relative;
+    transition: border-color 0.15s;
+  }
+  .hist-card:hover { border-color: var(--muted); }
+  .hist-card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .hist-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: capitalize;
+    letter-spacing: 1px;
+  }
+  .hist-card-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .hist-card-meta .spec-tag { color: var(--text); text-transform: capitalize; }
+  .hist-links {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .hist-link {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hist-link-tier { border-color: rgba(255,140,85,0.3); background: rgba(255,140,85,0.06); }
+  .hist-link-trinket { border-color: rgba(144,255,120,0.25); background: rgba(144,255,120,0.05); }
+  .hist-link a { text-decoration: none; flex: 1; }
+  .hist-link-tier a { color: var(--accent2); }
+  .hist-link-trinket a { color: var(--accent3); }
+  .hist-link a:hover { text-decoration: underline; }
+  .hist-link .copy-link-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 11px; padding: 0 2px;
+    font-family: 'Share Tech Mono', monospace;
+    transition: color 0.12s;
+  }
+  .hist-link .copy-link-btn:hover { color: var(--text); }
+  .hist-link-pending { color: var(--muted); font-style: italic; }
+  .hist-card-del {
+    position: absolute; top: 5px; right: 6px;
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 14px; opacity: 0;
+    transition: opacity 0.15s; padding: 2px 5px; line-height: 1;
+  }
+  .hist-card:hover .hist-card-del { opacity: 1; }
+  .hist-card-del:hover { color: #ff7070; }
+  .hist-empty-msg {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 40px 0;
+    text-align: center;
+    width: 100%;
+  }
+
 </style>
 </head>
 <body>
@@ -500,6 +636,12 @@
   <span class="api-status unset" id="raidsidStatus">NOT SET</span>
 </div>
 
+<div class="main-nav">
+  <div class="main-nav-tab active" id="navProcessor" onclick="switchMainTab('processor')">⚡ PROCESSOR</div>
+  <div class="main-nav-tab hist-tab" id="navHistory" onclick="switchMainTab('history')">📋 HISTORY</div>
+</div>
+
+<div class="page active" id="pageProcessor">
 <header>
   <div>
     <div class="logo">SimC <span>//</span> Processor</div>
@@ -1191,7 +1333,7 @@ function process() {
 
   // Add to history
   const info2 = extractCharInfo(input);
-  addToHistory(
+  const entryId = addToHistory(
     info2.charName,
     info2.spec,
     info2.cls,
@@ -1199,6 +1341,15 @@ function process() {
     tierOut,
     statType ? document.getElementById('outputTrinket').value : null
   );
+
+  // Auto-run sims if raidsid is set
+  const raidsid = localStorage.getItem('raidsid');
+  if (raidsid && entryId) {
+    setTimeout(() => {
+      autoRunSim(entryId, 'tier');
+      if (statType) setTimeout(() => autoRunSim(entryId, 'trinket'), 1500);
+    }, 300);
+  }
 }
 
 function copyOutput(type) {
@@ -1250,6 +1401,20 @@ function addToHistory(charName, spec, cls, statType, tierOutput, trinketOutput) 
   };
   profileHistory.unshift(entry);
   renderHistory();
+
+  // Save to persistent history (no sim links yet)
+  addToPersistentHistory({
+    id: entry.id,
+    charName: entry.charName,
+    spec: entry.spec,
+    cls: entry.cls,
+    statType: entry.statType,
+    date: new Date().toLocaleDateString() + ' ' + entry.time,
+    tierLink: null,
+    trinketLink: null
+  });
+
+  return entry.id;
 }
 
 function renderHistory() {
@@ -1516,8 +1681,10 @@ async function runSim(id, type, btn) {
     btn.textContent = '✓ RUNNING';
     btn.style.background = 'rgba(48,216,255,0.2)';
 
+    // Save pending link to persistent history
+    updatePersistentLink(id, type, 'https://www.raidbots.com/simbot/report/' + jobId);
     // Poll for completion
-    pollSim(jobId, resultEl, type);
+    pollSim(jobId, resultEl, type, id);
 
   } catch(err) {
     resultEl.textContent = '✗ Error: ' + err.message;
@@ -1529,7 +1696,7 @@ async function runSim(id, type, btn) {
   }
 }
 
-async function pollSim(jobId, resultEl, type) {
+async function pollSim(jobId, resultEl, type, entryId) {
   const maxAttempts = 60;
   let attempts = 0;
 
@@ -1550,6 +1717,8 @@ async function pollSim(jobId, resultEl, type) {
         const url = 'https://www.raidbots.com/simbot/report/' + jobId;
         resultEl.innerHTML = (type === 'tier' ? '🟠 TIER: ' : '🟢 TRK: ') + '<a href="' + url + '" target="_blank">✓ DONE → VIEW REPORT</a>';
         resultEl.className = 'card-sim-result card-sim-result-' + type;
+        // Save link to persistent history
+        if (entryId) updatePersistentLink(entryId, type, url);
       } else if (status === 'failed' || status === 'error') {
         clearInterval(interval);
         resultEl.textContent = '✗ Sim failed';
@@ -1564,9 +1733,203 @@ async function pollSim(jobId, resultEl, type) {
   }, 5000);
 }
 
-document.addEventListener('DOMContentLoaded', loadRaidsid);
+
+function autoRunSim(id, type) {
+  // Find the button on the card
+  const cards = document.querySelectorAll('.card');
+  for (var i = 0; i < cards.length; i++) {
+    if (parseInt(cards[i].getAttribute('data-id')) === id) {
+      const btns = cards[i].querySelectorAll('.card-btn-runsim');
+      for (var j = 0; j < btns.length; j++) {
+        if ((type === 'tier' && btns[j].textContent === 'RUN TIER') ||
+            (type === 'trinket' && btns[j].textContent === 'RUN TRK')) {
+          btns[j].click();
+          return;
+        }
+      }
+    }
+  }
+}
+
+
+// ── PERSISTENT HISTORY (localStorage) ───────────────────────────────────────
+
+const STORAGE_KEY = 'simc_persistent_history';
+
+function loadPersistentHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch(e) { return []; }
+}
+
+function savePersistentHistory(arr) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch(e) {}
+}
+
+function addToPersistentHistory(entry) {
+  const arr = loadPersistentHistory();
+  // Update if same id exists (to update sim links), else prepend
+  const idx = arr.findIndex(e => e.id === entry.id);
+  if (idx >= 0) arr[idx] = entry;
+  else arr.unshift(entry);
+  savePersistentHistory(arr);
+  renderPersistentHistory();
+}
+
+function updatePersistentLink(entryId, type, url) {
+  const arr = loadPersistentHistory();
+  const entry = arr.find(e => e.id === entryId);
+  if (!entry) return;
+  if (type === 'tier') entry.tierLink = url;
+  else entry.trinketLink = url;
+  savePersistentHistory(arr);
+  renderPersistentHistory();
+}
+
+function clearPersistentHistory() {
+  if (!confirm('Clear all persistent history?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  renderPersistentHistory();
+}
+
+function deletePersistentEntry(id) {
+  const arr = loadPersistentHistory().filter(e => e.id !== id);
+  savePersistentHistory(arr);
+  renderPersistentHistory();
+}
+
+function renderPersistentHistory() {
+  const grid = document.getElementById('histGrid');
+  const countEl = document.getElementById('histPageCount');
+  if (!grid) return;
+
+  const arr = loadPersistentHistory();
+  countEl.textContent = arr.length + ' profile' + (arr.length !== 1 ? 's' : '');
+
+  if (arr.length === 0) {
+    grid.innerHTML = '<div class="hist-empty-msg">No history yet — process characters to build history here.</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  arr.forEach(function(entry) {
+    const dotClass = entry.statType ? 'dot-' + entry.statType : 'dot-none';
+    const statLabel = entry.statType ? entry.statType.toUpperCase() : '?';
+
+    const card = document.createElement('div');
+    card.className = 'hist-card';
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'hist-card-del';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', function() { deletePersistentEntry(entry.id); });
+
+    const top = document.createElement('div');
+    top.className = 'hist-card-top';
+    top.innerHTML = '<div class="card-stat-dot ' + dotClass + '"></div>' +
+      '<div class="hist-card-name">' + entry.charName + '</div>' +
+      '<span class="badge badge-' + (entry.statType||'none') + '" style="font-size:9px;padding:2px 6px;">' + statLabel + '</span>';
+
+    const meta = document.createElement('div');
+    meta.className = 'hist-card-meta';
+    meta.innerHTML = '<span class="spec-tag">' + entry.spec + '</span> · ' + entry.cls + ' · ' + entry.date;
+
+    const links = document.createElement('div');
+    links.className = 'hist-links';
+
+    // Tier link row
+    const tierRow = document.createElement('div');
+    tierRow.className = 'hist-link hist-link-tier';
+    if (entry.tierLink) {
+      const a = document.createElement('a');
+      a.href = entry.tierLink;
+      a.target = '_blank';
+      a.textContent = '🟠 TIER → VIEW REPORT';
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-link-btn';
+      copyBtn.textContent = 'COPY';
+      copyBtn.addEventListener('click', function() { copyText(entry.tierLink, copyBtn); });
+      tierRow.appendChild(a);
+      tierRow.appendChild(copyBtn);
+    } else {
+      const span = document.createElement('span');
+      span.className = 'hist-link-pending';
+      span.textContent = '🟠 TIER — not submitted';
+      tierRow.appendChild(span);
+    }
+
+    // Trinket link row
+    const trkRow = document.createElement('div');
+    trkRow.className = 'hist-link hist-link-trinket';
+    if (entry.trinketLink) {
+      const a = document.createElement('a');
+      a.href = entry.trinketLink;
+      a.target = '_blank';
+      a.textContent = '🟢 TRINKETS → VIEW REPORT';
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-link-btn';
+      copyBtn.textContent = 'COPY';
+      copyBtn.addEventListener('click', function() { copyText(entry.trinketLink, copyBtn); });
+      trkRow.appendChild(a);
+      trkRow.appendChild(copyBtn);
+    } else {
+      const span = document.createElement('span');
+      span.className = 'hist-link-pending';
+      span.textContent = '🟢 TRINKETS — not submitted';
+      trkRow.appendChild(span);
+    }
+
+    links.appendChild(tierRow);
+    links.appendChild(trkRow);
+    card.appendChild(delBtn);
+    card.appendChild(top);
+    card.appendChild(meta);
+    card.appendChild(links);
+    grid.appendChild(card);
+  });
+}
+
+function copyText(text, btn) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.top = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  var orig = btn.textContent;
+  btn.textContent = '✓';
+  setTimeout(function() { btn.textContent = orig; }, 1200);
+}
+
+// ── MAIN TAB SWITCHER ────────────────────────────────────────────────────────
+
+function switchMainTab(tab) {
+  document.getElementById('pageProcessor').classList.toggle('active', tab === 'processor');
+  document.getElementById('pageHistory').classList.toggle('active', tab === 'history');
+  document.getElementById('navProcessor').classList.toggle('active', tab === 'processor');
+  document.getElementById('navHistory').classList.toggle('active', tab === 'history');
+  if (tab === 'history') renderPersistentHistory();
+}
+
+document.addEventListener('DOMContentLoaded', function() { loadRaidsid(); renderPersistentHistory(); });
 
 </script>
+
+</div><!-- end pageProcessor -->
+
+<div class="page" id="pageHistory">
+<div class="hist-page">
+  <div class="hist-page-header">
+    <div class="hist-page-title"><span>//</span> COMPLETE SIM HISTORY</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span class="hist-count" id="histPageCount">0 profiles</span>
+      <button class="btn btn-muted" onclick="clearPersistentHistory()" style="font-size:11px;padding:4px 12px;">CLEAR ALL</button>
+    </div>
+  </div>
+  <div class="hist-grid" id="histGrid"></div>
+</div>
+</div><!-- end pageHistory -->
 
 <div class="history-section" id="historySection">
   <div class="history-header">
