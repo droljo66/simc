@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimC Profile Processor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
+
+  :root {
+    --bg: #1a1f2e;
+    --panel: #222840;
+    --border: #323d55;
+    --accent: #30d8ff;
+    --accent2: #ff8c55;
+    --accent3: #90ff78;
+    --text: #ddeeff;
+    --muted: #7a90aa;
+    --header-bg: #161b28;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    background-image: 
+      radial-gradient(ellipse at 20% 0%, rgba(0,212,255,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(255,107,53,0.04) 0%, transparent 60%);
+  }
+
+  header {
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  header .logo {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  header .logo span { color: var(--accent2); }
+
+  header .subtitle {
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  .detected-badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+  }
+
+  .badge {
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-size: 11px;
+  }
+
+  .badge-str { background: rgba(255,107,53,0.15); color: var(--accent2); border: 1px solid rgba(255,107,53,0.3); }
+  .badge-agi { background: rgba(127,255,107,0.1); color: var(--accent3); border: 1px solid rgba(127,255,107,0.25); }
+  .badge-int { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.25); }
+  .badge-none { background: rgba(100,100,100,0.15); color: var(--muted); border: 1px solid var(--border); }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+  }
+
+  .panel-header {
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .panel-title span { color: var(--accent); }
+
+  .tab-row {
+    display: flex;
+    gap: 0;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    padding: 10px 20px;
+    font-size: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    cursor: pointer;
+    color: var(--muted);
+    border-right: 1px solid var(--border);
+    transition: all 0.15s;
+    user-select: none;
+    position: relative;
+  }
+
+  .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+
+  .tab.active {
+    color: var(--accent);
+    background: var(--panel);
+  }
+
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  .tab.tab-tier.active::after { background: var(--accent2); }
+  .tab.tab-tier.active { color: var(--accent2); }
+
+  textarea {
+    flex: 1;
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 16px 20px;
+    resize: none;
+    tab-size: 2;
+  }
+
+  textarea::placeholder { color: var(--muted); }
+
+  .output-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tab-content {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .tab-content.active {
+    display: flex;
+  }
+
+  .output-text {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #a8e6cf;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 16px 20px;
+    resize: none;
+    width: 100%;
+  }
+
+  .actions {
+    padding: 12px 20px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    padding: 8px 18px;
+    border: 1px solid;
+    border-radius: 3px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: rgba(0,212,255,0.1);
+    border-color: rgba(0,212,255,0.4);
+    color: var(--accent);
+  }
+  .btn-primary:hover { background: rgba(0,212,255,0.2); border-color: var(--accent); }
+
+  .btn-orange {
+    background: rgba(255,107,53,0.1);
+    border-color: rgba(255,107,53,0.4);
+    color: var(--accent2);
+  }
+  .btn-orange:hover { background: rgba(255,107,53,0.2); border-color: var(--accent2); }
+
+  .btn-green {
+    background: rgba(127,255,107,0.08);
+    border-color: rgba(127,255,107,0.3);
+    color: var(--accent3);
+  }
+  .btn-green:hover { background: rgba(127,255,107,0.15); border-color: var(--accent3); }
+
+  .btn-muted {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--muted);
+  }
+  .btn-muted:hover { border-color: var(--muted); color: var(--text); }
+
+  .status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    margin-left: auto;
+    color: var(--muted);
+  }
+
+  .status.ok { color: var(--accent3); }
+  .status.warn { color: var(--accent2); }
+
+  .stat-row {
+    display: flex;
+    gap: 18px;
+    padding: 8px 20px;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .stat-row .stat { display: flex; align-items: center; gap: 6px; }
+  .stat-row .stat-val { color: var(--text); font-weight: 600; }
+
+  .copy-flash {
+    animation: flash 0.4s ease;
+  }
+
+  @keyframes flash {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+  }
+
+  .divider {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+  }
+
+  /* Class/stat override buttons */
+  .stat-override {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .override-btn {
+    padding: 2px 8px;
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: transparent;
+    transition: all 0.15s;
+  }
+  .override-btn:hover { color: var(--text); border-color: var(--muted); }
+  .override-btn.active-str { border-color: rgba(255,107,53,0.5); color: var(--accent2); background: rgba(255,107,53,0.08); }
+  .override-btn.active-agi { border-color: rgba(127,255,107,0.4); color: var(--accent3); background: rgba(127,255,107,0.06); }
+  .override-btn.active-int { border-color: rgba(0,212,255,0.4); color: var(--accent); background: rgba(0,212,255,0.06); }
+
+
+  /* ── LAYOUT WRAPPER ── */
+  .app-wrapper { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  /* ── HISTORY ── */
+  .history-section {
+    border-top: 2px solid var(--border);
+    background: var(--header-bg);
+    padding: 12px 24px 16px;
+    overflow-y: auto;
+    max-height: 260px;
+    flex-shrink: 0;
+  }
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .history-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .history-title span { color: var(--accent); }
+  .history-cards { display: flex; flex-wrap: wrap; gap: 8px; }
+  .history-empty {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 4px 0;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 9px 28px 9px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 270px;
+    transition: border-color 0.15s;
+    position: relative;
+  }
+  .card:hover { border-color: var(--muted); }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name {
+    font-size: 14px; font-weight: 700; letter-spacing: 1px;
+    color: var(--text); text-transform: capitalize;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; color: var(--muted); margin-top: 2px;
+  }
+  .card-meta .spec-tag { color: var(--text); text-transform: capitalize; }
+  .card-btns { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+  .card-btn {
+    padding: 3px 9px; border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 1px; cursor: pointer;
+    border: 1px solid; transition: all 0.12s; white-space: nowrap;
+  }
+  .card-btn-tier { background: rgba(255,140,85,0.08); border-color: rgba(255,140,85,0.3); color: var(--accent2); }
+  .card-btn-tier:hover { background: rgba(255,140,85,0.2); }
+  .card-btn-trinket { background: rgba(144,255,120,0.07); border-color: rgba(144,255,120,0.25); color: var(--accent3); }
+  .card-btn-trinket:hover { background: rgba(144,255,120,0.15); }
+  .card-delete {
+    position: absolute; top: 4px; right: 5px;
+    font-size: 13px; color: var(--muted); cursor: pointer;
+    opacity: 0; transition: opacity 0.15s;
+    background: none; border: none; padding: 1px 4px; line-height: 1;
+  }
+  .card:hover .card-delete { opacity: 1; }
+  .card-delete:hover { color: #ff7070; }
+  .card-stat-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; align-self: flex-start; margin-top: 5px;
+  }
+  .dot-str { background: var(--accent2); box-shadow: 0 0 5px rgba(255,140,85,0.6); }
+  .dot-agi { background: var(--accent3); box-shadow: 0 0 5px rgba(144,255,120,0.6); }
+  .dot-int { background: var(--accent); box-shadow: 0 0 5px rgba(48,216,255,0.6); }
+  .dot-none { background: var(--muted); }
+
+  /* ── URL BAR ── */
+  .url-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .url-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .url-input {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 5px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .url-input:focus { border-color: var(--accent); }
+  .url-input::placeholder { color: var(--muted); }
+
+  /* ── API SETTINGS BAR ── */
+  .api-bar {
+    background: var(--header-bg);
+    border-bottom: 2px solid var(--border);
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .api-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .api-input {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 5px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .api-input:focus { border-color: var(--accent); }
+  .api-input::placeholder { color: var(--muted); }
+  .api-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .api-status.set { color: var(--accent3); }
+  .api-status.unset { color: var(--muted); }
+
+  /* ── SIM RESULT ON CARD ── */
+  .card-sim-result {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    margin-top: 3px;
+  }
+  .card-sim-result a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .card-sim-result a:hover { text-decoration: underline; }
+  .card-sim-result.pending { color: var(--muted); }
+  .card-sim-result.error { color: #ff7070; }
+  .card-btn-runsim {
+    background: rgba(48,216,255,0.08);
+    border-color: rgba(48,216,255,0.3);
+    color: var(--accent);
+  }
+  .card-btn-runsim:hover { background: rgba(48,216,255,0.18); }
+  .card-btn-runsim:disabled { opacity: 0.4; cursor: not-allowed; }
+
+</style>
+</head>
+<body>
+<div class="app-wrapper">
+<div class="api-bar">
+  <span class="api-label">RAIDSID COOKIE</span>
+  <input type="password" id="raidsidInput" class="api-input" placeholder="Paste your raidsid= cookie value here (saved locally in your browser)" oninput="saveRaidsid()" />
+  <span class="api-label">→ find it in DevTools → Network → any raidbots.com request → Request Headers → Cookie → copy the raidsid=... value</span>
+  <span class="api-status unset" id="raidsidStatus">NOT SET</span>
+</div>
+
+<header>
+  <div>
+    <div class="logo">SimC <span>//</span> Processor</div>
+    <div class="subtitle">Tierset &amp; Trinket Profile Builder</div>
+  </div>
+  <div class="detected-badge">
+    <span style="color:var(--muted);font-size:11px;">STAT TYPE:</span>
+    <span id="detectedBadge" class="badge badge-none">NONE</span>
+    <div class="stat-override">
+      <button class="override-btn" id="ovStr" onclick="setOverride('str')">STR</button>
+      <button class="override-btn" id="ovAgi" onclick="setOverride('agi')">AGI</button>
+      <button class="override-btn" id="ovInt" onclick="setOverride('int')">INT</button>
+      <button class="override-btn" id="ovAuto" onclick="setOverride('auto')" style="color:var(--accent);border-color:rgba(0,212,255,0.3);">AUTO</button>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- INPUT PANEL -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title"><span>//</span> RAW ADDON INPUT</span>
+      <button class="btn btn-muted" onclick="clearInput()">CLEAR</button>
+    </div>
+    <div class="url-bar">
+      <span class="url-label">RAIDBOTS URL</span>
+      <input type="text" id="raidsbotsUrl" class="url-input" placeholder="https://www.raidbots.com/simbot/report/XXXXXX" />
+      <button class="btn btn-primary" id="fetchBtn" onclick="fetchFromUrl()" style="padding:6px 14px;font-size:12px;">FETCH</button>
+    </div>
+    <div class="stat-row" id="inputStats">
+      <div class="stat">CHAR: <span class="stat-val" id="statChar">—</span></div>
+      <div class="stat">SPEC: <span class="stat-val" id="statSpec">—</span></div>
+      <div class="stat">CLASS: <span class="stat-val" id="statClass">—</span></div>
+      <div class="stat">T1: <span class="stat-val" id="statT1">—</span></div>
+      <div class="stat">T2: <span class="stat-val" id="statT2">—</span></div>
+    </div>
+    <textarea id="inputArea" placeholder="Paste raw SimC addon input here...&#10;&#10;The tool will:&#10;• Auto-detect class → stat type (Str/Agi/Int)&#10;• Rename character to 'base'&#10;• Strip existing trinkets&#10;• Generate Tierset output (tab 1)&#10;• Generate Trinket output (tab 2)" oninput="onInput()"></textarea>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="process()">⚡ PROCESS</button>
+      <span class="status" id="inputStatus">Waiting for input...</span>
+    </div>
+  </div>
+
+  <!-- OUTPUT PANEL -->
+  <div class="panel" style="border-right:none;">
+    <div class="panel-header">
+      <span class="panel-title"><span>//</span> PROCESSED OUTPUT</span>
+    </div>
+    <div class="tab-row">
+      <div class="tab tab-tier active" id="tabTier" onclick="switchTab('tier')">TIERSET SIM</div>
+      <div class="tab" id="tabTrinket" onclick="switchTab('trinket')">TRINKET SIM</div>
+    </div>
+    <div class="output-area">
+      <div class="tab-content active" id="contentTier">
+        <textarea class="output-text" id="outputTier" readonly placeholder="Tierset output will appear here..."></textarea>
+        <div class="actions">
+          <button class="btn btn-orange" onclick="copyOutput('tier')">COPY TIERSET</button>
+          <span class="status" id="tierStatus"></span>
+        </div>
+      </div>
+      <div class="tab-content" id="contentTrinket">
+        <textarea class="output-text" id="outputTrinket" readonly placeholder="Trinket output will appear here..."></textarea>
+        <div class="actions">
+          <button class="btn btn-green" onclick="copyOutput('trinket')">COPY TRINKETS</button>
+          <span class="status" id="trinketStatus"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TRINKET DATA ────────────────────────────────────────────────────────────
+
+const TRINKETS = {
+  str: `copy="Heart of Wind Myth"
+trinket1=,id=250256,bonus_id=4795,ilevel=289
+
+copy="Vessel of Tortured Souls Myth"
+trinket1=,id=250258,bonus_id=4795,ilevel=289
+
+copy="Kroluk's Warbanner Myth"
+trinket1=,id=250227,bonus_id=4795,ilevel=289
+
+copy="Algeth'ar Puzzle Box Myth"
+trinket1=,id=193701,bonus_id=4795,ilevel=289
+
+copy="Void Stalker's Contract Myth"
+trinket1=,id=151307,bonus_id=4795,ilevel=289
+
+copy="Solarflare Prism Myth"
+trinket1=,id=252420,bonus_id=4795,ilevel=289
+
+copy="Latch's Crooked Hook Myth"
+trinket1=,id=250226,bonus_id=4795,ilevel=289
+
+copy="Jelly Replicator Myth"
+trinket1=,id=250242,bonus_id=4795,ilevel=289
+
+copy="Rotting Globule Myth"
+trinket1=,id=252421,bonus_id=4795,ilevel=289
+
+copy="Ampoule of Pure Void Myth"
+trinket1=,id=151312,bonus_id=4795,ilevel=289
+
+copy="Solar Core Igniter Myth"
+trinket1=,id=252418,bonus_id=4795,ilevel=289
+
+copy="Mark of Light Myth"
+trinket1=,id=250241,bonus_id=4795,ilevel=289
+
+copy="Dragon Games Equipment Myth"
+trinket1=,id=193719,bonus_id=4795,ilevel=289
+
+copy="Heart of Wind Hero"
+trinket1=,id=250256,bonus_id=4795,ilevel=276
+
+copy="Vessel of Tortured Souls Hero"
+trinket1=,id=250258,bonus_id=4795,ilevel=276
+
+copy="Kroluk's Warbanner Hero"
+trinket1=,id=250227,bonus_id=4795,ilevel=276
+
+copy="Algeth'ar Puzzle Box Hero"
+trinket1=,id=193701,bonus_id=4795,ilevel=276
+
+copy="Void Stalker's Contract Hero"
+trinket1=,id=151307,bonus_id=4795,ilevel=276
+
+copy="Solarflare Prism Hero"
+trinket1=,id=252420,bonus_id=4795,ilevel=276
+
+copy="Latch's Crooked Hook Hero"
+trinket1=,id=250226,bonus_id=4795,ilevel=276
+
+copy="Jelly Replicator Hero"
+trinket1=,id=250242,bonus_id=4795,ilevel=276
+
+copy="Rotting Globule Hero"
+trinket1=,id=252421,bonus_id=4795,ilevel=276
+
+copy="Ampoule of Pure Void Hero"
+trinket1=,id=151312,bonus_id=4795,ilevel=276
+
+copy="Solar Core Igniter Hero"
+trinket1=,id=252418,bonus_id=4795,ilevel=276
+
+copy="Mark of Light Hero"
+trinket1=,id=250241,bonus_id=4795,ilevel=276
+
+copy="Dragon Games Equipment Hero"
+trinket1=,id=193719,bonus_id=4795,ilevel=276
+
+copy="Light Company Guidon Myth"
+trinket1=,id=249344,bonus_id=4795,ilevel=289
+
+copy="Heart of Ancient Hunger Myth"
+trinket1=,id=249342,bonus_id=4795,ilevel=289
+
+copy="Gaze of the Alnseer Myth"
+trinket1=,id=249343,bonus_id=4795,ilevel=289
+
+copy="Undreamt God's Oozing Vestige Myth"
+trinket1=,id=249805,bonus_id=4795,ilevel=289
+
+copy="Radiant Plume Myth"
+trinket1=,id=249806,bonus_id=4795,ilevel=289
+
+copy="The Eternal Egg Myth"
+trinket1=,id=249807,bonus_id=4795,ilevel=289
+
+copy="Gloom-Splattered Dreadscale Myth"
+trinket1=,id=249339,bonus_id=4795,ilevel=289
+
+copy="Light Company Guidon Hero"
+trinket1=,id=249344,bonus_id=4795,ilevel=276
+
+copy="Heart of Ancient Hunger Hero"
+trinket1=,id=249342,bonus_id=4795,ilevel=276
+
+copy="Gaze of the Alnseer Hero"
+trinket1=,id=249343,bonus_id=4795,ilevel=276
+
+copy="Undreamt God's Oozing Vestige Hero"
+trinket1=,id=249805,bonus_id=4795,ilevel=276
+
+copy="Radiant Plume Hero"
+trinket1=,id=249806,bonus_id=4795,ilevel=276
+
+copy="The Eternal Egg Hero"
+trinket1=,id=249807,bonus_id=4795,ilevel=276
+
+copy="Gloom-Splattered Dreadscale Hero"
+trinket1=,id=249339,bonus_id=4795,ilevel=276`,
+
+  int: `copy="Heart of Wind Myth"
+trinket1=,id=250256,bonus_id=4795,ilevel=289
+
+copy="Vessel of Tortured Souls Myth"
+trinket1=,id=250258,bonus_id=4795,ilevel=289
+
+copy="Eye of the Drowning Void Myth"
+trinket1=,id=250257,bonus_id=4795,ilevel=289
+
+copy="Emberwing Feather Myth"
+trinket1=,id=250144,bonus_id=4795,ilevel=289
+
+copy="Soulcatcher's Charm Myth"
+trinket1=,id=250223,bonus_id=4795,ilevel=289
+
+copy="Emerald Coach's Whistle Myth"
+trinket1=,id=193718,bonus_id=4795,ilevel=289
+
+copy="Nevermelting Ice Crystal Myth"
+trinket1=,id=50259,bonus_id=4795,ilevel=289
+
+copy="Reality Breacher Myth"
+trinket1=,id=151310,bonus_id=4795,ilevel=289
+
+copy="Refueling Orb Myth"
+trinket1=,id=250246,bonus_id=4795,ilevel=289
+
+copy="Whisper of the Duskwraith Myth"
+trinket1=,id=250253,bonus_id=4795,ilevel=289
+
+copy="Echo of L'ura Myth"
+trinket1=,id=151340,bonus_id=4795,ilevel=289
+
+copy="Radiant Sunstone Myth"
+trinket1=,id=252411,bonus_id=4795,ilevel=289
+
+copy="Heart of Wind Hero"
+trinket1=,id=250256,bonus_id=4795,ilevel=276
+
+copy="Vessel of Tortured Souls Hero"
+trinket1=,id=250258,bonus_id=4795,ilevel=276
+
+copy="Eye of the Drowning Void Hero"
+trinket1=,id=250257,bonus_id=4795,ilevel=276
+
+copy="Emberwing Feather Hero"
+trinket1=,id=250144,bonus_id=4795,ilevel=276
+
+copy="Soulcatcher's Charm Hero"
+trinket1=,id=250223,bonus_id=4795,ilevel=276
+
+copy="Emerald Coach's Whistle Hero"
+trinket1=,id=193718,bonus_id=4795,ilevel=276
+
+copy="Nevermelting Ice Crystal Hero"
+trinket1=,id=50259,bonus_id=4795,ilevel=276
+
+copy="Reality Breacher Hero"
+trinket1=,id=151310,bonus_id=4795,ilevel=276
+
+copy="Refueling Orb Hero"
+trinket1=,id=250246,bonus_id=4795,ilevel=276
+
+copy="Whisper of the Duskwraith Hero"
+trinket1=,id=250253,bonus_id=4795,ilevel=276
+
+copy="Echo of L'ura Hero"
+trinket1=,id=151340,bonus_id=4795,ilevel=276
+
+copy="Radiant Sunstone Hero"
+trinket1=,id=252411,bonus_id=4795,ilevel=276
+
+copy="Volatile Void Suffuser Myth"
+trinket1=,id=249341,bonus_id=4795,ilevel=289
+
+copy="Wraps of Cosmic Madness Myth"
+trinket1=,id=249340,bonus_id=4795,ilevel=289
+
+copy="Vaelgor's Final Stare Myth"
+trinket1=,id=249346,bonus_id=4795,ilevel=289
+
+copy="Litany of the Lightblind Wrath Myth"
+trinket1=,id=249808,bonus_id=4795,ilevel=289
+
+copy="Locus-Walker's Ribbon Myth"
+trinket1=,id=249809,bonus_id=4795,ilevel=289
+
+copy="Gaze of the Alnseer Myth"
+trinket1=,id=249343,bonus_id=4795,ilevel=289
+
+copy="Light of the Cosmic Crescendo Myth"
+trinket1=,id=249811,bonus_id=4795,ilevel=289
+
+copy="Shadow of the Empyrean Requiem Myth"
+trinket1=,id=249810,bonus_id=4795,ilevel=289
+
+copy="Volatile Void Suffuser Hero"
+trinket1=,id=249341,bonus_id=4795,ilevel=276
+
+copy="Wraps of Cosmic Madness Hero"
+trinket1=,id=249340,bonus_id=4795,ilevel=276
+
+copy="Vaelgor's Final Stare Hero"
+trinket1=,id=249346,bonus_id=4795,ilevel=276
+
+copy="Litany of the Lightblind Wrath Hero"
+trinket1=,id=249808,bonus_id=4795,ilevel=276
+
+copy="Locus-Walker's Ribbon Hero"
+trinket1=,id=249809,bonus_id=4795,ilevel=276
+
+copy="Gaze of the Alnseer Hero"
+trinket1=,id=249343,bonus_id=4795,ilevel=276
+
+copy="Light of the Cosmic Crescendo Hero"
+trinket1=,id=249811,bonus_id=4795,ilevel=276
+
+copy="Shadow of the Empyrean Requiem Hero"
+trinket1=,id=249810,bonus_id=4795,ilevel=276`,
+
+  agi: `copy="Heart of Wind Myth"
+trinket1=,id=250256,bonus_id=4795,ilevel=289
+
+copy="Vessel of Tortured Souls Myth"
+trinket1=,id=250258,bonus_id=4795,ilevel=289
+
+copy="Jelly Replicator Myth"
+trinket1=,id=250242,bonus_id=4795,ilevel=289
+
+copy="Latch's Crooked Hook Myth"
+trinket1=,id=250226,bonus_id=4795,ilevel=289
+
+copy="Kroluk's Warbanner Myth"
+trinket1=,id=250227,bonus_id=4795,ilevel=289
+
+copy="Algeth'ar Puzzle Box Myth"
+trinket1=,id=193701,bonus_id=4795,ilevel=289
+
+copy="Void Stalker's Contract Myth"
+trinket1=,id=151307,bonus_id=4795,ilevel=289
+
+copy="Solarflare Prism Myth"
+trinket1=,id=252420,bonus_id=4795,ilevel=289
+
+copy="Rotting Globule Myth"
+trinket1=,id=252421,bonus_id=4795,ilevel=289
+
+copy="Ampoule of Pure Void Myth"
+trinket1=,id=151312,bonus_id=4795,ilevel=289
+
+copy="Solar Core Igniter Myth"
+trinket1=,id=252418,bonus_id=4795,ilevel=289
+
+copy="Eye of the Drowning Void Myth"
+trinket1=,id=250257,bonus_id=4795,ilevel=289
+
+copy="Emberwing Feather Myth"
+trinket1=,id=250144,bonus_id=4795,ilevel=289
+
+copy="Heart of Wind Hero"
+trinket1=,id=250256,bonus_id=4795,ilevel=276
+
+copy="Vessel of Tortured Souls Hero"
+trinket1=,id=250258,bonus_id=4795,ilevel=276
+
+copy="Jelly Replicator Hero"
+trinket1=,id=250242,bonus_id=4795,ilevel=276
+
+copy="Latch's Crooked Hook Hero"
+trinket1=,id=250226,bonus_id=4795,ilevel=276
+
+copy="Kroluk's Warbanner Hero"
+trinket1=,id=250227,bonus_id=4795,ilevel=276
+
+copy="Algeth'ar Puzzle Box Hero"
+trinket1=,id=193701,bonus_id=4795,ilevel=276
+
+copy="Void Stalker's Contract Hero"
+trinket1=,id=151307,bonus_id=4795,ilevel=276
+
+copy="Solarflare Prism Hero"
+trinket1=,id=252420,bonus_id=4795,ilevel=276
+
+copy="Rotting Globule Hero"
+trinket1=,id=252421,bonus_id=4795,ilevel=276
+
+copy="Ampoule of Pure Void Hero"
+trinket1=,id=151312,bonus_id=4795,ilevel=276
+
+copy="Solar Core Igniter Hero"
+trinket1=,id=252418,bonus_id=4795,ilevel=276
+
+copy="Eye of the Drowning Void Hero"
+trinket1=,id=250257,bonus_id=4795,ilevel=276
+
+copy="Emberwing Feather Hero"
+trinket1=,id=250144,bonus_id=4795,ilevel=276
+
+copy="Light Company Guidon Myth"
+trinket1=,id=249344,bonus_id=4795,ilevel=289
+
+copy="Ranger-Captain's Iridescent Insignia Myth"
+trinket1=,id=249345,bonus_id=4795,ilevel=289
+
+copy="Gaze of the Alnseer Myth"
+trinket1=,id=249343,bonus_id=4795,ilevel=289
+
+copy="Undreamt God's Oozing Vestige Myth"
+trinket1=,id=249805,bonus_id=4795,ilevel=289
+
+copy="Radiant Plume Myth"
+trinket1=,id=249806,bonus_id=4795,ilevel=289
+
+copy="The Eternal Egg Myth"
+trinket1=,id=249807,bonus_id=4795,ilevel=289
+
+copy="Gloom-Splattered Dreadscale Myth"
+trinket1=,id=249339,bonus_id=4795,ilevel=289
+
+copy="Light Company Guidon Hero"
+trinket1=,id=249344,bonus_id=4795,ilevel=276
+
+copy="Ranger-Captain's Iridescent Insignia Hero"
+trinket1=,id=249345,bonus_id=4795,ilevel=276
+
+copy="Gaze of the Alnseer Hero"
+trinket1=,id=249343,bonus_id=4795,ilevel=276
+
+copy="Undreamt God's Oozing Vestige Hero"
+trinket1=,id=249805,bonus_id=4795,ilevel=276
+
+copy="Radiant Plume Hero"
+trinket1=,id=249806,bonus_id=4795,ilevel=276
+
+copy="The Eternal Egg Hero"
+trinket1=,id=249807,bonus_id=4795,ilevel=276
+
+copy="Gloom-Splattered Dreadscale Hero"
+trinket1=,id=249339,bonus_id=4795,ilevel=276`
+};
+
+// ── CLASS → STAT MAP ────────────────────────────────────────────────────────
+
+const CLASS_STAT = {
+  // Strength
+  warrior: 'str', paladin: 'str', deathknight: 'str', death_knight: 'str',
+  // Agility
+  hunter: 'agi', rogue: 'agi', shaman: 'agi', monk: 'agi', druid: 'agi',
+  demonhunter: 'agi', demon_hunter: 'agi',
+  // Intellect
+  mage: 'int', warlock: 'int', priest: 'int', evoker: 'int',
+};
+
+// Specs that are actually STR (e.g. enhancement shaman is agi but paladin is str by class)
+const SPEC_OVERRIDE = {
+  // Druid specs
+  'balance': 'int',
+  'restoration': 'int',
+  // Shaman specs
+  'elemental': 'int',
+  // Paladin specs
+  'holy': 'int',
+  // Monk specs
+  'mistweaver': 'int',
+  // Warrior/DK/Pala are always str — no change needed
+};
+
+// ── STATE ───────────────────────────────────────────────────────────────────
+
+let manualOverride = null;
+
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+
+function detectStatType(input) {
+  // Find class line: word="..." or word=...
+  const classMatch = input.match(/^(druid|warrior|paladin|deathknight|death_knight|hunter|rogue|shaman|monk|demonhunter|demon_hunter|mage|warlock|priest|evoker)\s*=/im);
+  const specMatch = input.match(/^spec\s*=\s*(\w+)/im);
+
+  let stat = null;
+  if (classMatch) {
+    const cls = classMatch[1].toLowerCase().replace(' ', '_');
+    stat = CLASS_STAT[cls] || null;
+  }
+
+  if (specMatch) {
+    const spec = specMatch[1].toLowerCase();
+    if (SPEC_OVERRIDE[spec]) stat = SPEC_OVERRIDE[spec];
+  }
+
+  return stat;
+}
+
+function extractCharInfo(input) {
+  const charMatch = input.match(/^(\w+)\s*=\s*["']?(\w+)["']?/im);
+  const specMatch = input.match(/^spec\s*=\s*(\w+)/im);
+  const classMatch = input.match(/^(druid|warrior|paladin|deathknight|death_knight|hunter|rogue|shaman|monk|demonhunter|demon_hunter|mage|warlock|priest|evoker)\s*=/im);
+  const t1Match = input.match(/^trinket1\s*=.*?(?:#.*)?$/im);
+  const t2Match = input.match(/^trinket2\s*=.*?(?:#.*)?$/im);
+
+  // Get the comment line above trinket for name
+  const t1NameMatch = input.match(/#\s*(.+?)\s*\(\d+\)\s*\n\s*trinket1=/im);
+  const t2NameMatch = input.match(/#\s*(.+?)\s*\(\d+\)\s*\n\s*trinket2=/im);
+
+  return {
+    charName: charMatch ? charMatch[2] : '—',
+    spec: specMatch ? specMatch[1] : '—',
+    cls: classMatch ? classMatch[1] : '—',
+    t1: t1NameMatch ? t1NameMatch[1] : (t1Match ? 'present' : '—'),
+    t2: t2NameMatch ? t2NameMatch[1] : (t2Match ? 'present' : '—'),
+  };
+}
+
+function stripTrinkets(lines) {
+  const result = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    // Check if this is a comment line for a trinket (preceded by # ItemName (ilvl))
+    // followed by trinket1= or trinket2=
+    if (trimmed.startsWith('#') && i + 1 < lines.length) {
+      const nextTrimmed = lines[i + 1].trim();
+      if (nextTrimmed.startsWith('trinket1=') || nextTrimmed.startsWith('trinket2=')) {
+        i += 2; // skip comment + trinket line
+        continue;
+      }
+    }
+    if (trimmed.startsWith('trinket1=') || trimmed.startsWith('trinket2=')) {
+      i++;
+      continue;
+    }
+    result.push(line);
+    i++;
+  }
+  return result;
+}
+
+function renameToBase(lines) {
+  const classPattern = /^(druid|warrior|paladin|deathknight|death_knight|hunter|rogue|shaman|monk|demonhunter|demon_hunter|mage|warlock|priest|evoker)\s*=\s*(.+)/i;
+  return lines.map(line => {
+    if (classPattern.test(line.trim())) {
+      return line.replace(/=\s*.+$/, '=base');
+    }
+    return line;
+  });
+}
+
+function stripExistingTierAndCopy(lines) {
+  // Remove any copy= blocks and set_bonus lines already in the input
+  const result = [];
+  let i = 0;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('copy=') || trimmed.startsWith('set_bonus=')) {
+      i++;
+      continue;
+    }
+    result.push(lines[i]);
+    i++;
+  }
+  // Remove trailing blank lines
+  while (result.length && result[result.length - 1].trim() === '') result.pop();
+  return result;
+}
+
+function buildBaseProfile(input) {
+  let lines = input.split('\n');
+  lines = stripExistingTierAndCopy(lines);
+  lines = renameToBase(lines);
+  return lines;
+}
+
+function buildTierOutput(baseLines) {
+  const base = baseLines.join('\n');
+  return base + `
+
+copy="ST 2pc"
+set_bonus=midnight_season_1_2pc=1
+set_bonus=midnight_season_1_4pc=0
+
+copy="ST 4pc"
+set_bonus=midnight_season_1_2pc=1
+set_bonus=midnight_season_1_4pc=1`;
+}
+
+function buildTrinketOutput(baseLines, statType) {
+  const lines = stripTrinkets(baseLines);
+  const base = lines.join('\n').replace(/\n{3,}/g, '\n\n');
+  const trinketBlock = TRINKETS[statType];
+  return base + '\n\n' + trinketBlock;
+}
+
+// ── UI ───────────────────────────────────────────────────────────────────────
+
+function onInput() {
+  const input = document.getElementById('inputArea').value;
+  if (!input.trim()) {
+    resetStats();
+    return;
+  }
+  const info = extractCharInfo(input);
+  document.getElementById('statChar').textContent = info.charName;
+  document.getElementById('statSpec').textContent = info.spec;
+  document.getElementById('statClass').textContent = info.cls;
+  document.getElementById('statT1').textContent = info.t1;
+  document.getElementById('statT2').textContent = info.t2;
+
+  if (manualOverride === null || manualOverride === 'auto') {
+    const detected = detectStatType(input);
+    updateBadge(detected);
+  }
+
+  document.getElementById('inputStatus').textContent = 'Ready to process';
+  document.getElementById('inputStatus').className = 'status ok';
+}
+
+function resetStats() {
+  ['statChar','statSpec','statClass','statT1','statT2'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+  document.getElementById('inputStatus').textContent = 'Waiting for input...';
+  document.getElementById('inputStatus').className = 'status';
+  updateBadge(null);
+}
+
+function updateBadge(stat) {
+  const badge = document.getElementById('detectedBadge');
+  badge.className = 'badge';
+  if (stat === 'str') { badge.classList.add('badge-str'); badge.textContent = 'STRENGTH'; }
+  else if (stat === 'agi') { badge.classList.add('badge-agi'); badge.textContent = 'AGILITY'; }
+  else if (stat === 'int') { badge.classList.add('badge-int'); badge.textContent = 'INTELLECT'; }
+  else { badge.classList.add('badge-none'); badge.textContent = 'UNDETECTED'; }
+}
+
+function setOverride(type) {
+  manualOverride = type;
+  // Update button styles
+  ['ovStr','ovAgi','ovInt','ovAuto'].forEach(id => {
+    const btn = document.getElementById(id);
+    btn.className = 'override-btn';
+  });
+  if (type === 'str') { document.getElementById('ovStr').classList.add('active-str'); updateBadge('str'); }
+  else if (type === 'agi') { document.getElementById('ovAgi').classList.add('active-agi'); updateBadge('agi'); }
+  else if (type === 'int') { document.getElementById('ovInt').classList.add('active-int'); updateBadge('int'); }
+  else {
+    document.getElementById('ovAuto').style.color = 'var(--accent)';
+    // re-detect
+    const input = document.getElementById('inputArea').value;
+    if (input.trim()) updateBadge(detectStatType(input));
+    else updateBadge(null);
+    manualOverride = 'auto';
+  }
+}
+
+function process() {
+  const input = document.getElementById('inputArea').value.trim();
+  if (!input) {
+    document.getElementById('inputStatus').textContent = 'No input!';
+    document.getElementById('inputStatus').className = 'status warn';
+    return;
+  }
+
+  let statType = manualOverride && manualOverride !== 'auto' ? manualOverride : detectStatType(input);
+
+  if (!statType) {
+    document.getElementById('inputStatus').textContent = 'Could not detect stat type — use override buttons!';
+    document.getElementById('inputStatus').className = 'status warn';
+  }
+
+  const baseLines = buildBaseProfile(input);
+
+  // Tierset output
+  const tierOut = buildTierOutput(baseLines);
+  document.getElementById('outputTier').value = tierOut;
+  document.getElementById('tierStatus').textContent = 'Generated ✓';
+  document.getElementById('tierStatus').className = 'status ok';
+
+  // Trinket output
+  if (statType) {
+    const trinketOut = buildTrinketOutput(baseLines, statType);
+    document.getElementById('outputTrinket').value = trinketOut;
+    document.getElementById('trinketStatus').textContent = `Generated ✓ (${statType.toUpperCase()})`;
+    document.getElementById('trinketStatus').className = 'status ok';
+  } else {
+    document.getElementById('outputTrinket').value = '// Set stat type override (STR/AGI/INT) above, then press PROCESS again.';
+    document.getElementById('trinketStatus').textContent = 'Needs stat type override';
+    document.getElementById('trinketStatus').className = 'status warn';
+  }
+
+  document.getElementById('inputStatus').textContent = statType
+    ? `Processed → ${statType.toUpperCase()}`
+    : 'Processed (no stat type)';
+  document.getElementById('inputStatus').className = 'status ok';
+
+  // Add to history
+  const info2 = extractCharInfo(input);
+  addToHistory(
+    info2.charName,
+    info2.spec,
+    info2.cls,
+    statType,
+    tierOut,
+    statType ? document.getElementById('outputTrinket').value : null
+  );
+}
+
+function copyOutput(type) {
+  const el = document.getElementById(type === 'tier' ? 'outputTier' : 'outputTrinket');
+  el.select();
+  document.execCommand('copy');
+  window.getSelection()?.removeAllRanges();
+
+  const btn = type === 'tier'
+    ? document.querySelector('.btn-orange')
+    : document.querySelector('.btn-green');
+  const orig = btn.textContent;
+  btn.textContent = '✓ COPIED!';
+  setTimeout(() => btn.textContent = orig, 1500);
+}
+
+function clearInput() {
+  document.getElementById('inputArea').value = '';
+  document.getElementById('outputTier').value = '';
+  document.getElementById('outputTrinket').value = '';
+  resetStats();
+  document.getElementById('tierStatus').textContent = '';
+  document.getElementById('trinketStatus').textContent = '';
+}
+
+function switchTab(tab) {
+  document.getElementById('tabTier').classList.toggle('active', tab === 'tier');
+  document.getElementById('tabTrinket').classList.toggle('active', tab === 'trinket');
+  document.getElementById('contentTier').classList.toggle('active', tab === 'tier');
+  document.getElementById('contentTrinket').classList.toggle('active', tab === 'trinket');
+}
+
+// ── HISTORY ─────────────────────────────────────────────────────────────────
+
+const profileHistory = [];
+let historyCounter = 0;
+
+function addToHistory(charName, spec, cls, statType, tierOutput, trinketOutput) {
+  historyCounter++;
+  const entry = {
+    id: historyCounter,
+    charName: charName,
+    spec: spec,
+    cls: cls,
+    statType: statType,
+    tierOutput: tierOutput,
+    trinketOutput: trinketOutput,
+    time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+  };
+  profileHistory.unshift(entry);
+  renderHistory();
+}
+
+function renderHistory() {
+  const container = document.getElementById('historyCards');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (profileHistory.length === 0) {
+    container.innerHTML = '<div class="history-empty">No profiles processed yet.</div>';
+    return;
+  }
+
+  for (let i = 0; i < profileHistory.length; i++) {
+    var entry = profileHistory[i];
+    var dotClass = entry.statType ? 'dot-' + entry.statType : 'dot-none';
+    var statLabel = entry.statType ? entry.statType.toUpperCase() : '?';
+    var entryId = entry.id;
+
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.setAttribute('data-id', entryId);
+
+    var dot = document.createElement('div');
+    dot.className = 'card-stat-dot ' + dotClass;
+
+    var info = document.createElement('div');
+    info.className = 'card-info';
+    info.innerHTML = '<div class="card-name">' + entry.charName + '</div>' +
+      '<div class="card-meta"><span class="spec-tag">' + entry.spec + '</span> · ' + entry.cls + ' · <span style="color:var(--accent)">' + statLabel + '</span> · ' + entry.time + '</div>';
+
+    var btns = document.createElement('div');
+    btns.className = 'card-btns';
+
+    var tierBtn = document.createElement('button');
+    tierBtn.className = 'card-btn card-btn-tier';
+    tierBtn.textContent = 'COPY TIER';
+    tierBtn.setAttribute('data-id', entryId);
+    tierBtn.setAttribute('data-type', 'tier');
+    tierBtn.addEventListener('click', function() {
+      handleCardCopy(parseInt(this.getAttribute('data-id')), this.getAttribute('data-type'), this);
+    });
+
+    var trinketBtn = document.createElement('button');
+    trinketBtn.className = 'card-btn card-btn-trinket';
+    trinketBtn.textContent = 'COPY TRK';
+    trinketBtn.setAttribute('data-id', entryId);
+    trinketBtn.setAttribute('data-type', 'trinket');
+    trinketBtn.addEventListener('click', function() {
+      handleCardCopy(parseInt(this.getAttribute('data-id')), this.getAttribute('data-type'), this);
+    });
+
+    var runTierBtn = document.createElement('button');
+    runTierBtn.className = 'card-btn card-btn-runsim';
+    runTierBtn.textContent = 'RUN TIER';
+    runTierBtn.setAttribute('data-id', entryId);
+    runTierBtn.addEventListener('click', function() {
+      runSim(parseInt(this.getAttribute('data-id')), 'tier', this);
+    });
+
+    var runTrinketBtn = document.createElement('button');
+    runTrinketBtn.className = 'card-btn card-btn-runsim';
+    runTrinketBtn.textContent = 'RUN TRK';
+    runTrinketBtn.setAttribute('data-id', entryId);
+    runTrinketBtn.addEventListener('click', function() {
+      runSim(parseInt(this.getAttribute('data-id')), 'trinket', this);
+    });
+
+    var delBtn = document.createElement('button');
+    delBtn.className = 'card-delete';
+    delBtn.textContent = '×';
+    delBtn.setAttribute('data-id', entryId);
+    delBtn.addEventListener('click', function() {
+      handleCardDelete(parseInt(this.getAttribute('data-id')));
+    });
+
+    btns.appendChild(tierBtn);
+    btns.appendChild(trinketBtn);
+    btns.appendChild(runTierBtn);
+    btns.appendChild(runTrinketBtn);
+    card.appendChild(dot);
+    card.appendChild(info);
+    card.appendChild(btns);
+    card.appendChild(delBtn);
+    container.appendChild(card);
+  }
+}
+
+function handleCardCopy(id, type, btn) {
+  var entry = null;
+  for (var i = 0; i < profileHistory.length; i++) {
+    if (profileHistory[i].id === id) { entry = profileHistory[i]; break; }
+  }
+  if (!entry) return;
+  var text = type === 'tier' ? entry.tierOutput : entry.trinketOutput;
+  if (!text) return;
+
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+
+  var orig = btn.textContent;
+  btn.textContent = '✓ COPIED';
+  btn.style.background = type === 'tier' ? 'rgba(255,140,85,0.3)' : 'rgba(144,255,120,0.2)';
+  setTimeout(function() { btn.textContent = orig; btn.style.background = ''; }, 1400);
+}
+
+function handleCardDelete(id) {
+  for (var i = 0; i < profileHistory.length; i++) {
+    if (profileHistory[i].id === id) { profileHistory.splice(i, 1); break; }
+  }
+  renderHistory();
+}
+
+function clearHistory() {
+  profileHistory.length = 0;
+  renderHistory();
+}
+
+
+// ── URL FETCH ────────────────────────────────────────────────────────────────
+
+async function fetchFromUrl() {
+  const urlInput = document.getElementById('raidsbotsUrl').value.trim();
+  if (!urlInput) return;
+
+  const fetchBtn = document.getElementById('fetchBtn');
+  fetchBtn.textContent = 'FETCHING...';
+  fetchBtn.disabled = true;
+
+  // Extract report ID — handle full URL or just the ID
+  let reportId = urlInput;
+  const match = urlInput.match(/simbot\/report\/([a-zA-Z0-9]+)/);
+  if (match) reportId = match[1];
+  // Strip anything after the ID (trailing slashes etc)
+  reportId = reportId.replace(/[^a-zA-Z0-9]/g, '');
+
+  const directUrl = 'https://www.raidbots.com/simbot/report/' + reportId + '/input.txt';
+  const fetchUrl = 'https://corsproxy.io/?' + encodeURIComponent(directUrl);
+
+  try {
+    const resp = await fetch(fetchUrl);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const text = await resp.text();
+    if (!text || text.trim().length === 0) throw new Error('Empty response');
+
+    document.getElementById('inputArea').value = text;
+    document.getElementById('raidsbotsUrl').value = '';
+    onInput();
+
+    fetchBtn.textContent = '✓ LOADED';
+    fetchBtn.style.color = 'var(--accent3)';
+    setTimeout(() => {
+      fetchBtn.textContent = 'FETCH';
+      fetchBtn.style.color = '';
+      fetchBtn.disabled = false;
+    }, 1500);
+  } catch (err) {
+    fetchBtn.textContent = 'ERROR';
+    fetchBtn.style.color = 'var(--accent2)';
+    console.error('Fetch failed:', err);
+    setTimeout(() => {
+      fetchBtn.textContent = 'FETCH';
+      fetchBtn.style.color = '';
+      fetchBtn.disabled = false;
+    }, 2000);
+  }
+}
+
+// Allow pressing Enter in URL field
+document.addEventListener('DOMContentLoaded', function() {
+  const urlField = document.getElementById('raidsbotsUrl');
+  if (urlField) {
+    urlField.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') fetchFromUrl();
+    });
+  }
+});
+
+
+// ── RAIDSID / AUTO SIM ───────────────────────────────────────────────────────
+
+function saveRaidsid() {
+  const val = document.getElementById('raidsidInput').value.trim();
+  if (val) {
+    localStorage.setItem('raidsid', val);
+    document.getElementById('raidsidStatus').textContent = '✓ SAVED';
+    document.getElementById('raidsidStatus').className = 'api-status set';
+  } else {
+    localStorage.removeItem('raidsid');
+    document.getElementById('raidsidStatus').textContent = 'NOT SET';
+    document.getElementById('raidsidStatus').className = 'api-status unset';
+  }
+}
+
+function loadRaidsid() {
+  const saved = localStorage.getItem('raidsid');
+  if (saved) {
+    document.getElementById('raidsidInput').value = saved;
+    document.getElementById('raidsidStatus').textContent = '✓ SAVED';
+    document.getElementById('raidsidStatus').className = 'api-status set';
+  }
+}
+
+async function runSim(id, type, btn) {
+  const raidsid = localStorage.getItem('raidsid');
+  if (!raidsid) {
+    alert('Please enter your raidsid cookie value at the top first!');
+    return;
+  }
+
+  var entry = null;
+  for (var i = 0; i < profileHistory.length; i++) {
+    if (profileHistory[i].id === id) { entry = profileHistory[i]; break; }
+  }
+  if (!entry) return;
+
+  const simText = type === 'tier' ? entry.tierOutput : entry.trinketOutput;
+  if (!simText) return;
+
+  btn.disabled = true;
+  btn.textContent = 'SUBMITTING...';
+
+  // Update card status
+  const card = btn.closest('.card');
+  let resultEl = card.querySelector('.card-sim-result-' + type);
+  if (!resultEl) {
+    resultEl = document.createElement('div');
+    resultEl.className = 'card-sim-result pending card-sim-result-' + type;
+    card.querySelector('.card-info').appendChild(resultEl);
+  }
+  resultEl.textContent = '⏳ Submitting...';
+  resultEl.className = 'card-sim-result pending card-sim-result-' + type;
+
+  try {
+    const resp = await fetch('https://winter-mode-c018.drolcpusj.workers.dev/sim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Raidsid': raidsid,
+      },
+      body: JSON.stringify({
+        type: 'advanced',
+        text: '',
+        advancedInput: simText
+      })
+    });
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const jobId = data.job && data.job.id ? data.job.id : (data.simId || data.id);
+
+    if (!jobId) throw new Error('No job ID in response');
+
+    const resultUrl = 'https://www.raidbots.com/simbot/report/' + jobId;
+    resultEl.className = 'card-sim-result card-sim-result-' + type;
+    resultEl.innerHTML = (type === 'tier' ? '🟠 TIER: ' : '🟢 TRK: ') + '<a href="' + resultUrl + '" target="_blank">' + jobId + '</a>';
+
+    btn.textContent = '✓ RUNNING';
+    btn.style.background = 'rgba(48,216,255,0.2)';
+
+    // Poll for completion
+    pollSim(jobId, resultEl, type);
+
+  } catch(err) {
+    resultEl.textContent = '✗ Error: ' + err.message;
+    resultEl.className = 'card-sim-result error card-sim-result-' + type;
+    btn.textContent = type === 'tier' ? 'RUN TIER' : 'RUN TRK';
+    btn.disabled = false;
+    btn.style.background = '';
+    console.error('Sim submission error:', err);
+  }
+}
+
+async function pollSim(jobId, resultEl, type) {
+  const maxAttempts = 60;
+  let attempts = 0;
+
+  const interval = setInterval(async () => {
+    attempts++;
+    if (attempts > maxAttempts) {
+      clearInterval(interval);
+      return;
+    }
+    try {
+      const resp = await fetch('https://winter-mode-c018.drolcpusj.workers.dev/job/' + jobId);
+      const data = await resp.json();
+      const job = data.job || data;
+      const status = job.state || job.status;
+
+      if (status === 'complete' || status === 'finished') {
+        clearInterval(interval);
+        const url = 'https://www.raidbots.com/simbot/report/' + jobId;
+        resultEl.innerHTML = (type === 'tier' ? '🟠 TIER: ' : '🟢 TRK: ') + '<a href="' + url + '" target="_blank">✓ DONE → VIEW REPORT</a>';
+        resultEl.className = 'card-sim-result card-sim-result-' + type;
+      } else if (status === 'failed' || status === 'error') {
+        clearInterval(interval);
+        resultEl.textContent = '✗ Sim failed';
+        resultEl.className = 'card-sim-result error card-sim-result-' + type;
+      } else {
+        const pos = job.position || job.queuePosition;
+        resultEl.innerHTML = (type === 'tier' ? '🟠 TIER: ' : '🟢 TRK: ') +
+          '<a href="https://www.raidbots.com/simbot/report/' + jobId + '" target="_blank">' +
+          (pos ? 'Queue #' + pos : status || 'running...') + '</a>';
+      }
+    } catch(e) { /* ignore poll errors */ }
+  }, 5000);
+}
+
+document.addEventListener('DOMContentLoaded', loadRaidsid);
+
+</script>
+
+<div class="history-section" id="historySection">
+  <div class="history-header">
+    <div class="history-title"><span>//</span> PROCESSED HISTORY</div>
+    <button class="btn btn-muted" onclick="clearHistory()" style="font-size:11px;padding:4px 12px;">CLEAR ALL</button>
+  </div>
+  <div class="history-cards" id="historyCards">
+    <div class="history-empty" id="historyEmpty">No profiles processed yet. Process a character to add them here.</div>
+  </div>
+</div>
+</div>
+</body>
+</html>
