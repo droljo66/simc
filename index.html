@@ -625,6 +625,45 @@
     width: 100%;
   }
 
+
+  /* ── BATCH QUEUE ── */
+  #batchQueue {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .queue-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 4px 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+  }
+  .queue-id { color: var(--muted); width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+  .queue-status { flex: 1; }
+  .queue-status.pending { color: var(--muted); }
+  .queue-status.fetching { color: var(--accent); }
+  .queue-status.processing { color: var(--accent2); }
+  .queue-status.running { color: var(--accent3); }
+  .queue-status.done { color: var(--accent3); }
+  .queue-status.error { color: #ff7070; }
+  .queue-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .queue-dot.pending { background: var(--muted); }
+  .queue-dot.fetching { background: var(--accent); animation: pulse 1s infinite; }
+  .queue-dot.processing { background: var(--accent2); animation: pulse 1s infinite; }
+  .queue-dot.running { background: var(--accent3); animation: pulse 1s infinite; }
+  .queue-dot.done { background: var(--accent3); }
+  .queue-dot.error { background: #ff7070; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
 </style>
 </head>
 <body>
@@ -666,10 +705,14 @@
       <span class="panel-title"><span>//</span> RAW ADDON INPUT</span>
       <button class="btn btn-muted" onclick="clearInput()">CLEAR</button>
     </div>
-    <div class="url-bar">
-      <span class="url-label">RAIDBOTS URL</span>
-      <input type="text" id="raidsbotsUrl" class="url-input" placeholder="https://www.raidbots.com/simbot/report/XXXXXX" />
-      <button class="btn btn-primary" id="fetchBtn" onclick="fetchFromUrl()" style="padding:6px 14px;font-size:12px;">FETCH</button>
+    <div class="url-bar" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="url-label">RAIDBOTS URLS</span>
+        <span class="url-label" style="color:var(--muted);font-size:9px;">ONE PER LINE — PASTE AS MANY AS YOU WANT</span>
+        <button class="btn btn-primary" id="fetchBtn" onclick="fetchBatch()" style="padding:6px 14px;font-size:12px;margin-left:auto;">⚡ RUN ALL</button>
+      </div>
+      <textarea id="batchUrlInput" class="url-input" rows="3" placeholder="https://www.raidbots.com/simbot/report/ABC123&#10;https://www.raidbots.com/simbot/report/DEF456&#10;https://www.raidbots.com/simbot/report/GHI789" style="resize:vertical;min-height:60px;font-size:11px;line-height:1.6;"></textarea>
+      <div id="batchQueue" style="display:none;"></div>
     </div>
     <div class="stat-row" id="inputStats">
       <div class="stat">CHAR: <span class="stat-val" id="statChar">—</span></div>
@@ -1539,6 +1582,130 @@ function clearHistory() {
   renderHistory();
 }
 
+
+
+// ── BATCH PROCESSING ────────────────────────────────────────────────────────
+
+let batchRunning = false;
+
+async function fetchBatch() {
+  if (batchRunning) return;
+
+  const raw = document.getElementById('batchUrlInput').value.trim();
+  if (!raw) return;
+
+  // Parse URLs/IDs — one per line
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const items = lines.map(line => {
+    const match = line.match(/simbot\/report\/([a-zA-Z0-9]+)/);
+    const id = match ? match[1] : line.replace(/[^a-zA-Z0-9]/g, '');
+    return { reportId: id, line };
+  }).filter(item => item.reportId.length > 3);
+
+  if (items.length === 0) return;
+
+  const queue = document.getElementById('batchQueue');
+  queue.style.display = 'flex';
+  queue.innerHTML = '';
+
+  // Build queue UI
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'queue-item';
+    el.id = 'qi-' + item.reportId;
+    el.innerHTML =
+      '<div class="queue-dot pending" id="qd-' + item.reportId + '"></div>' +
+      '<div class="queue-id">' + item.reportId + '</div>' +
+      '<div class="queue-status pending" id="qs-' + item.reportId + '">Waiting...</div>';
+    queue.appendChild(el);
+  });
+
+  batchRunning = true;
+  const btn = document.getElementById('fetchBtn');
+  btn.textContent = '⏳ RUNNING...';
+  btn.disabled = true;
+
+  // Process sequentially with small delay between each
+  for (let i = 0; i < items.length; i++) {
+    await processBatchItem(items[i].reportId);
+    if (i < items.length - 1) await sleep(1500); // delay between fetches
+  }
+
+  batchRunning = false;
+  btn.textContent = '✓ ALL DONE';
+  btn.style.color = 'var(--accent3)';
+  setTimeout(() => {
+    btn.textContent = '⚡ RUN ALL';
+    btn.style.color = '';
+    btn.disabled = false;
+    document.getElementById('batchUrlInput').value = '';
+    setTimeout(() => { queue.style.display = 'none'; queue.innerHTML = ''; }, 3000);
+  }, 3000);
+}
+
+function setQueueStatus(reportId, state, message) {
+  const dot = document.getElementById('qd-' + reportId);
+  const status = document.getElementById('qs-' + reportId);
+  if (dot) { dot.className = 'queue-dot ' + state; }
+  if (status) { status.className = 'queue-status ' + state; status.textContent = message; }
+}
+
+async function processBatchItem(reportId) {
+  setQueueStatus(reportId, 'fetching', 'Fetching input...');
+
+  try {
+    // 1. Fetch the raw input
+    const directUrl = 'https://www.raidbots.com/simbot/report/' + reportId + '/input.txt';
+    const fetchUrl = 'https://corsproxy.io/?' + encodeURIComponent(directUrl);
+    const resp = await fetch(fetchUrl);
+    if (!resp.ok) throw new Error('Fetch failed: HTTP ' + resp.status);
+    const rawInput = await resp.text();
+    if (!rawInput || rawInput.trim().length === 0) throw new Error('Empty input');
+
+    setQueueStatus(reportId, 'processing', 'Processing...');
+
+    // 2. Process it (same logic as manual process)
+    const statType = manualOverride && manualOverride !== 'auto'
+      ? manualOverride
+      : detectStatType(rawInput);
+
+    const baseLines = buildBaseProfile(rawInput);
+    const tierOut = buildTierOutput(baseLines);
+    const trinketOut = statType ? buildTrinketOutput(baseLines, statType) : null;
+
+    // 3. Extract char info
+    const info = extractCharInfo(rawInput);
+
+    // 4. Add to history (no auto-display in input area)
+    const entryId = addToHistory(
+      info.charName, info.spec, info.cls, statType, tierOut, trinketOut
+    );
+
+    setQueueStatus(reportId, 'running', 'Submitting sims...');
+
+    // 5. Auto-submit sims if raidsid set
+    const raidsid = localStorage.getItem('raidsid');
+    if (raidsid && entryId) {
+      await sleep(300);
+      autoRunSim(entryId, 'tier');
+      if (statType && trinketOut) {
+        await sleep(1500);
+        autoRunSim(entryId, 'trinket');
+      }
+      setQueueStatus(reportId, 'done', '✓ Sims submitted → check History tab');
+    } else {
+      setQueueStatus(reportId, 'done', '✓ Processed (no raidsid — set cookie to auto-sim)');
+    }
+
+  } catch(err) {
+    setQueueStatus(reportId, 'error', '✗ ' + err.message);
+    console.error('Batch error for', reportId, err);
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // ── URL FETCH ────────────────────────────────────────────────────────────────
 
