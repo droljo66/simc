@@ -545,9 +545,56 @@
     color: var(--muted);
   }
   .hist-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    width: 100%;
+  }
+  .hist-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+  }
+  .hist-table th {
+    background: var(--panel);
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  .hist-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .hist-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .hist-table .td-name { font-weight: 700; color: var(--text); text-transform: capitalize; white-space: nowrap; }
+  .hist-table .td-spec { color: var(--muted); white-space: nowrap; }
+  .hist-table .td-link a { text-decoration: none; }
+  .hist-table .td-link a:hover { text-decoration: underline; }
+  .hist-table .td-link .copy-link-btn {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; padding: 0 4px;
+    margin-left: 6px;
+  }
+  .hist-table .td-link .copy-link-btn:hover { color: var(--text); }
+  .hist-table .td-pending { color: var(--muted); font-style: italic; }
+  .hist-table .td-del {
+    width: 30px; text-align: center;
+  }
+  .hist-table .td-del button {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 14px; padding: 2px 6px; opacity: 0; transition: opacity 0.15s;
+  }
+  .hist-table tr:hover .td-del button { opacity: 1; }
+  .hist-table .td-del button:hover { color: #ff7070; }
+  .hist-copy-all {
+    margin-top: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
   }
   .hist-card {
     background: var(--panel);
@@ -710,6 +757,7 @@
         <span class="url-label">RAIDBOTS URLS</span>
         <span class="url-label" style="color:var(--muted);font-size:9px;">ONE PER LINE — PASTE AS MANY AS YOU WANT</span>
         <button class="btn btn-primary" id="fetchBtn" onclick="fetchBatch()" style="padding:6px 14px;font-size:12px;margin-left:auto;">⚡ RUN ALL</button>
+      <button class="btn btn-muted" id="stopBtn" onclick="stopBatch()" style="padding:6px 14px;font-size:12px;display:none;">⏹ STOP</button>
       </div>
       <textarea id="batchUrlInput" class="url-input" rows="3" placeholder="https://www.raidbots.com/simbot/report/ABC123&#10;https://www.raidbots.com/simbot/report/DEF456&#10;https://www.raidbots.com/simbot/report/GHI789" style="resize:vertical;min-height:60px;font-size:11px;line-height:1.6;"></textarea>
       <div id="batchQueue" style="display:none;"></div>
@@ -724,6 +772,31 @@
     <textarea id="inputArea" placeholder="Paste raw SimC addon input here...&#10;&#10;The tool will:&#10;• Auto-detect class → stat type (Str/Agi/Int)&#10;• Rename character to 'base'&#10;• Strip existing trinkets&#10;• Generate Tierset output (tab 1)&#10;• Generate Trinket output (tab 2)" oninput="onInput()"></textarea>
     <div class="actions">
       <button class="btn btn-primary" onclick="process()">⚡ PROCESS</button>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent3);user-select:none;">
+        <input type="checkbox" id="trinket4pcCheck" style="accent-color:var(--accent3);width:14px;height:14px;cursor:pointer;" />
+        TRINKETS WITH 4PC
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent2);user-select:none;">
+        <input type="checkbox" id="skipTierCheck" style="accent-color:var(--accent2);width:14px;height:14px;cursor:pointer;" />
+        TRINKETS ONLY
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);user-select:none;">
+        LOCK T1
+        <select id="lockTrinketSelect" style="background:var(--panel);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;padding:3px 6px;outline:none;cursor:pointer;max-width:200px;">
+          <option value="none">None</option>
+        </select>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent);user-select:none;">
+        <input type="checkbox" id="ilevelOverrideCheck" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer;" onchange="toggleIlevelInput()" />
+        UPGRADE ALL TO
+        <input type="number" id="ilevelOverrideVal" min="1" max="999" value="289" style="width:54px;padding:3px 6px;background:var(--panel);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;display:none;" />
+        <span id="ilevelOverrideLabel" style="display:none;color:var(--muted);">ILVL</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);user-select:none;">
+        FIGHT LENGTH
+        <input type="number" id="fightDuration" min="60" max="3600" value="300" step="30" style="width:60px;padding:3px 6px;background:var(--panel);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;" />
+        <span style="color:var(--muted);">SEC</span>
+      </label>
       <span class="status" id="inputStatus">Waiting for input...</span>
     </div>
   </div>
@@ -878,7 +951,13 @@ copy="The Eternal Egg Hero"
 trinket1=,id=249807,bonus_id=4795,ilevel=276
 
 copy="Gloom-Splattered Dreadscale Hero"
-trinket1=,id=249339,bonus_id=4795,ilevel=276`,
+trinket1=,id=249339,bonus_id=4795,ilevel=276
+
+copy="Umbral Plume Myth"
+trinket1=,id=260235,bonus_id=4795,ilevel=289
+
+copy="Umbral Plume Hero"
+trinket1=,id=260235,bonus_id=4795,ilevel=276`,
 
   int: `copy="Heart of Wind Myth"
 trinket1=,id=250256,bonus_id=4795,ilevel=289
@@ -1118,7 +1197,13 @@ copy="The Eternal Egg Hero"
 trinket1=,id=249807,bonus_id=4795,ilevel=276
 
 copy="Gloom-Splattered Dreadscale Hero"
-trinket1=,id=249339,bonus_id=4795,ilevel=276`
+trinket1=,id=249339,bonus_id=4795,ilevel=276
+
+copy="Umbral Plume Myth"
+trinket1=,id=260235,bonus_id=4795,ilevel=289
+
+copy="Umbral Plume Hero"
+trinket1=,id=260235,bonus_id=4795,ilevel=276`
 };
 
 // ── CLASS → STAT MAP ────────────────────────────────────────────────────────
@@ -1144,6 +1229,8 @@ const SPEC_OVERRIDE = {
   'holy': 'int',
   // Monk specs
   'mistweaver': 'int',
+  // Demon Hunter specs — Devourer is INT, Havoc/Vengeance/Slayer are AGI
+  'devourer': 'int',
   // Warrior/DK/Pala are always str — no change needed
 };
 
@@ -1218,10 +1305,15 @@ function stripTrinkets(lines) {
 }
 
 function renameToBase(lines) {
-  const classPattern = /^(druid|warrior|paladin|deathknight|death_knight|hunter|rogue|shaman|monk|demonhunter|demon_hunter|mage|warlock|priest|evoker)\s*=\s*(.+)/i;
+  const classPattern = /^(druid|warrior|paladin|deathknight|death_knight|hunter|rogue|shaman|monk|demonhunter|demon_hunter|mage|warlock|priest|evoker)\s*=/i;
+  const namePattern = /^name\s*=/i;
   return lines.map(line => {
-    if (classPattern.test(line.trim())) {
-      return line.replace(/=\s*.+$/, '=base');
+    const trimmed = line.replace(/\r/g, '').trimStart();
+    if (classPattern.test(trimmed)) {
+      return trimmed.replace(/=.*$/, '=base');
+    }
+    if (namePattern.test(trimmed)) {
+      return 'name=base';
     }
     return line;
   });
@@ -1246,9 +1338,12 @@ function stripExistingTierAndCopy(lines) {
 }
 
 function buildBaseProfile(input) {
+  input = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  input = applyIlevelOverride(input);
   let lines = input.split('\n');
   lines = stripExistingTierAndCopy(lines);
   lines = renameToBase(lines);
+  lines = applyFightDuration(lines);
   return lines;
 }
 
@@ -1265,11 +1360,61 @@ set_bonus=midnight_season_1_2pc=1
 set_bonus=midnight_season_1_4pc=1`;
 }
 
-function buildTrinketOutput(baseLines, statType) {
+
+function getLockTrinket() {
+  const sel = document.getElementById('lockTrinketSelect');
+  return sel ? sel.value : 'none'; // 'none', 't1', 't2'
+}
+
+// Strip only the unlocked trinket slot, keep the locked one
+function stripTrinetksWithLock(lines, lockSlot) {
+  if (lockSlot === 'none') return stripTrinkets(lines);
+  // lockSlot is 't1' or 't2' — keep that one, strip the other
+  const keepSlot = lockSlot === 't1' ? 'trinket1' : 'trinket2';
+  const stripSlot = lockSlot === 't1' ? 'trinket2' : 'trinket1';
+  const result = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (trimmed.startsWith('#') && i + 1 < lines.length) {
+      const nextTrimmed = lines[i + 1].trim();
+      if (nextTrimmed.startsWith(stripSlot + '=')) {
+        i += 2; continue;
+      }
+    }
+    if (trimmed.startsWith(stripSlot + '=')) {
+      i++; continue;
+    }
+    result.push(line);
+    i++;
+  }
+  return result;
+}
+
+function buildTrinketOutput(baseLines, statType, with4pc) {
+  const lockedLine = getLockTrinketLine();
+
+  // Strip both trinkets from base
   const lines = stripTrinkets(baseLines);
-  const base = lines.join('\n').replace(/\n{3,}/g, '\n\n');
-  const trinketBlock = TRINKETS[statType];
-  return base + '\n\n' + trinketBlock;
+  let base = lines.join('\n').replace(/\n{3,}/g, '\n\n');
+
+  if (with4pc) {
+    base = base + '\nset_bonus=midnight_season_1_2pc=1\nset_bonus=midnight_season_1_4pc=1';
+  }
+
+  if (lockedLine) {
+    // Add locked trinket as trinket1, sim copies cycle through trinket2
+    base = base + '\ntrinket1=' + lockedLine;
+    let trinketBlock = TRINKETS[statType];
+    // Replace trinket1= with trinket2= in all copies
+    trinketBlock = trinketBlock.replace(/^trinket1=/mg, 'trinket2=');
+    return base + '\n\n' + trinketBlock;
+  } else {
+    // No lock — normal behaviour, copies use trinket1=
+    const trinketBlock = TRINKETS[statType];
+    return base + '\n\n' + trinketBlock;
+  }
 }
 
 // ── UI ───────────────────────────────────────────────────────────────────────
@@ -1286,11 +1431,13 @@ function onInput() {
   document.getElementById('statClass').textContent = info.cls;
   document.getElementById('statT1').textContent = info.t1;
   document.getElementById('statT2').textContent = info.t2;
+  const detectedStat = detectStatType(input);
+  const effectiveStat = (manualOverride && manualOverride !== 'auto') ? manualOverride : detectedStat;
 
   if (manualOverride === null || manualOverride === 'auto') {
-    const detected = detectStatType(input);
-    updateBadge(detected);
+    updateBadge(detectedStat);
   }
+  populateLockDropdown(effectiveStat);
 
   document.getElementById('inputStatus').textContent = 'Ready to process';
   document.getElementById('inputStatus').className = 'status ok';
@@ -1321,9 +1468,9 @@ function setOverride(type) {
     const btn = document.getElementById(id);
     btn.className = 'override-btn';
   });
-  if (type === 'str') { document.getElementById('ovStr').classList.add('active-str'); updateBadge('str'); }
-  else if (type === 'agi') { document.getElementById('ovAgi').classList.add('active-agi'); updateBadge('agi'); }
-  else if (type === 'int') { document.getElementById('ovInt').classList.add('active-int'); updateBadge('int'); }
+  if (type === 'str') { document.getElementById('ovStr').classList.add('active-str'); updateBadge('str'); populateLockDropdown('str'); }
+  else if (type === 'agi') { document.getElementById('ovAgi').classList.add('active-agi'); updateBadge('agi'); populateLockDropdown('agi'); }
+  else if (type === 'int') { document.getElementById('ovInt').classList.add('active-int'); updateBadge('int'); populateLockDropdown('int'); }
   else {
     document.getElementById('ovAuto').style.color = 'var(--accent)';
     // re-detect
@@ -1343,6 +1490,7 @@ function process() {
   }
 
   let statType = manualOverride && manualOverride !== 'auto' ? manualOverride : detectStatType(input);
+  populateLockDropdown(statType);
 
   if (!statType) {
     document.getElementById('inputStatus').textContent = 'Could not detect stat type — use override buttons!';
@@ -1359,7 +1507,8 @@ function process() {
 
   // Trinket output
   if (statType) {
-    const trinketOut = buildTrinketOutput(baseLines, statType);
+    const with4pc = document.getElementById('trinket4pcCheck') && document.getElementById('trinket4pcCheck').checked;
+    const trinketOut = buildTrinketOutput(baseLines, statType, with4pc);
     document.getElementById('outputTrinket').value = trinketOut;
     document.getElementById('trinketStatus').textContent = `Generated ✓ (${statType.toUpperCase()})`;
     document.getElementById('trinketStatus').className = 'status ok';
@@ -1378,7 +1527,7 @@ function process() {
   const info2 = extractCharInfo(input);
   const entryId = addToHistory(
     info2.charName,
-    info2.spec,
+    getDisplaySpec(info2.cls, info2.spec),
     info2.cls,
     statType,
     tierOut,
@@ -1387,10 +1536,11 @@ function process() {
 
   // Auto-run sims if raidsid is set
   const raidsid = localStorage.getItem('raidsid');
+  const skipTier = document.getElementById('skipTierCheck') && document.getElementById('skipTierCheck').checked;
   if (raidsid && entryId) {
     setTimeout(() => {
-      autoRunSim(entryId, 'tier');
-      if (statType) setTimeout(() => autoRunSim(entryId, 'trinket'), 1500);
+      if (!skipTier) autoRunSim(entryId, 'tier');
+      if (statType) setTimeout(() => autoRunSim(entryId, 'trinket'), skipTier ? 300 : 4000);
     }, 300);
   }
 }
@@ -1587,6 +1737,9 @@ function clearHistory() {
 // ── BATCH PROCESSING ────────────────────────────────────────────────────────
 
 let batchRunning = false;
+let batchStopped = false;
+let completedReportIds = new Set();
+let pendingBatchItems = []; // items not yet completed
 
 async function fetchBatch() {
   if (batchRunning) return;
@@ -1596,20 +1749,32 @@ async function fetchBatch() {
 
   // Parse URLs/IDs — one per line
   const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const items = lines.map(line => {
+  const allItems = lines.map(line => {
     const match = line.match(/simbot\/report\/([a-zA-Z0-9]+)/);
     const id = match ? match[1] : line.replace(/[^a-zA-Z0-9]/g, '');
     return { reportId: id, line };
   }).filter(item => item.reportId.length > 3);
 
-  if (items.length === 0) return;
+  if (allItems.length === 0) return;
+
+  // Filter out already completed items (resume support)
+  const items = allItems.filter(item => !completedReportIds.has(item.reportId));
+  const skipped = allItems.length - items.length;
+
+  if (items.length === 0) {
+    alert('All items already completed! Clear the input to start fresh.');
+    return;
+  }
 
   const queue = document.getElementById('batchQueue');
   queue.style.display = 'flex';
-  queue.innerHTML = '';
+  // Don't wipe queue if resuming — keep existing done items
+  if (skipped === 0) queue.innerHTML = '';
 
-  // Build queue UI
+  // Build queue UI for pending items
   items.forEach(item => {
+    // Skip if already in queue UI
+    if (document.getElementById('qi-' + item.reportId)) return;
     const el = document.createElement('div');
     el.className = 'queue-item';
     el.id = 'qi-' + item.reportId;
@@ -1620,26 +1785,70 @@ async function fetchBatch() {
     queue.appendChild(el);
   });
 
+  if (skipped > 0) {
+    const resumeEl = document.createElement('div');
+    resumeEl.style.cssText = 'font-family:"Share Tech Mono",monospace;font-size:10px;color:var(--accent3);padding:4px 6px;';
+    resumeEl.textContent = '↩ Resuming — skipped ' + skipped + ' already completed';
+    queue.insertBefore(resumeEl, queue.firstChild);
+  }
+
   batchRunning = true;
+  batchStopped = false;
   const btn = document.getElementById('fetchBtn');
   btn.textContent = '⏳ RUNNING...';
   btn.disabled = true;
+  document.getElementById('stopBtn').style.display = 'inline-block';
 
-  // Process sequentially with small delay between each
-  for (let i = 0; i < items.length; i++) {
-    await processBatchItem(items[i].reportId);
-    if (i < items.length - 1) await sleep(1500); // delay between fetches
+  const CHUNK_SIZE = 10;
+  const chunks = [];
+  for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+    chunks.push(items.slice(i, i + CHUNK_SIZE));
+  }
+
+  for (let ci = 0; ci < chunks.length; ci++) {
+    if (batchStopped) break;
+    const chunk = chunks[ci];
+
+    // Update button to show chunk progress
+    btn.textContent = '⏳ CHUNK ' + (ci+1) + '/' + chunks.length + '...';
+
+    // Step 1: fetch + process + submit all items in this chunk sequentially
+    const chunkEntryIds = [];
+    for (let i = 0; i < chunk.length; i++) {
+      if (batchStopped) break;
+      const entryId = await processBatchItem(chunk[i].reportId);
+      chunkEntryIds.push(entryId);
+      if (i < chunk.length - 1 && !batchStopped) await sleep(3000);
+    }
+
+    if (batchStopped) break;
+
+    // Step 2: wait for all sims in this chunk to finish before starting next chunk
+    if (ci < chunks.length - 1) {
+      btn.textContent = '⏳ WAITING FOR CHUNK ' + (ci+1) + ' SIMS...';
+      setQueueStatus(chunk[chunk.length-1].reportId, 'running', 'Waiting for sims to finish before next chunk...');
+      await waitForChunkSims(chunkEntryIds);
+      if (!batchStopped) {
+        btn.textContent = '✅ CHUNK ' + (ci+1) + ' DONE — starting next...';
+        await sleep(3000);
+      }
+    }
   }
 
   batchRunning = false;
-  btn.textContent = '✓ ALL DONE';
+  document.getElementById('stopBtn').style.display = 'none';
+  const allDoneNow = allItems.every(item => completedReportIds.has(item.reportId));
+  btn.textContent = allDoneNow ? '✓ ALL DONE' : '✅ RESUMED — ' + completedReportIds.size + '/' + allItems.length + ' done';
   btn.style.color = 'var(--accent3)';
   setTimeout(() => {
     btn.textContent = '⚡ RUN ALL';
     btn.style.color = '';
     btn.disabled = false;
-    document.getElementById('batchUrlInput').value = '';
-    setTimeout(() => { queue.style.display = 'none'; queue.innerHTML = ''; }, 3000);
+    if (allDoneNow) {
+      completedReportIds.clear();
+      document.getElementById('batchUrlInput').value = '';
+      setTimeout(() => { queue.style.display = 'none'; queue.innerHTML = ''; }, 3000);
+    }
   }, 3000);
 }
 
@@ -1653,14 +1862,30 @@ function setQueueStatus(reportId, state, message) {
 async function processBatchItem(reportId) {
   setQueueStatus(reportId, 'fetching', 'Fetching input...');
 
+  // 1. Fetch the raw input — stop immediately on any error
+  const fetchUrl = 'https://winter-mode-c018.drolcpusj.workers.dev/input/' + reportId;
+  let rawInput = null;
   try {
-    // 1. Fetch the raw input
-    const directUrl = 'https://www.raidbots.com/simbot/report/' + reportId + '/input.txt';
-    const fetchUrl = 'https://corsproxy.io/?' + encodeURIComponent(directUrl);
     const resp = await fetch(fetchUrl);
-    if (!resp.ok) throw new Error('Fetch failed: HTTP ' + resp.status);
-    const rawInput = await resp.text();
-    if (!rawInput || rawInput.trim().length === 0) throw new Error('Empty input');
+    if (!resp.ok) {
+      setQueueStatus(reportId, 'error', '✗ HTTP ' + resp.status + ' — hit RUN ALL to resume');
+      stopBatch();
+      return null;
+    }
+    const text = await resp.text();
+    if (!text || text.trim().length === 0) {
+      setQueueStatus(reportId, 'error', '✗ Empty response — hit RUN ALL to resume');
+      stopBatch();
+      return null;
+    }
+    rawInput = text;
+  } catch(e) {
+    setQueueStatus(reportId, 'error', '✗ ' + e.message + ' — hit RUN ALL to resume');
+    stopBatch();
+    return null;
+  }
+
+  try {
 
     setQueueStatus(reportId, 'processing', 'Processing...');
 
@@ -1671,40 +1896,232 @@ async function processBatchItem(reportId) {
 
     const baseLines = buildBaseProfile(rawInput);
     const tierOut = buildTierOutput(baseLines);
-    const trinketOut = statType ? buildTrinketOutput(baseLines, statType) : null;
+    const with4pcBatch = document.getElementById('trinket4pcCheck') && document.getElementById('trinket4pcCheck').checked;
+    const trinketOut = statType ? buildTrinketOutput(baseLines, statType, with4pcBatch) : null;
 
     // 3. Extract char info
     const info = extractCharInfo(rawInput);
 
     // 4. Add to history (no auto-display in input area)
     const entryId = addToHistory(
-      info.charName, info.spec, info.cls, statType, tierOut, trinketOut
+      info.charName, getDisplaySpec(info.cls, info.spec), info.cls, statType, tierOut, trinketOut
     );
 
-    setQueueStatus(reportId, 'running', 'Submitting sims...');
+    const statLabel = statType ? statType.toUpperCase() : 'UNKNOWN';
+    setQueueStatus(reportId, 'running', 'Submitting sims (' + statLabel + ')...');
+
+    if (batchStopped) { setQueueStatus(reportId, 'error', '— cancelled'); return; }
 
     // 5. Auto-submit sims if raidsid set
     const raidsid = localStorage.getItem('raidsid');
+    const skipTierBatch = document.getElementById('skipTierCheck') && document.getElementById('skipTierCheck').checked;
     if (raidsid && entryId) {
-      await sleep(300);
-      autoRunSim(entryId, 'tier');
-      if (statType && trinketOut) {
-        await sleep(1500);
+      await sleep(1000);
+      if (!skipTierBatch) autoRunSim(entryId, 'tier');
+      if (trinketOut) {
+        await sleep(skipTierBatch ? 1000 : 4000);
         autoRunSim(entryId, 'trinket');
+        setQueueStatus(reportId, 'done', '✓ Tier + Trinkets submitted (' + statLabel + ')');
+      } else {
+        setQueueStatus(reportId, 'done', '✓ Tier submitted — no trinket (' + (statType ? 'no trinket list for ' + statLabel : 'stat undetected') + ')');
       }
-      setQueueStatus(reportId, 'done', '✓ Sims submitted → check History tab');
     } else {
       setQueueStatus(reportId, 'done', '✓ Processed (no raidsid — set cookie to auto-sim)');
     }
+    completedReportIds.add(reportId);
+    return entryId;
 
   } catch(err) {
     setQueueStatus(reportId, 'error', '✗ ' + err.message);
     console.error('Batch error for', reportId, err);
+    return null;
+  }
+}
+
+function stopBatch() {
+  batchStopped = true;
+  batchRunning = false;
+  const btn = document.getElementById('fetchBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  btn.textContent = '▶ RESUME';
+  btn.style.color = 'var(--accent3)';
+  btn.disabled = false;
+  stopBtn.style.display = 'none';
+  // Mark remaining pending/fetching items as paused
+  document.querySelectorAll('.queue-dot.pending, .queue-dot.fetching').forEach(dot => {
+    dot.className = 'queue-dot error';
+  });
+  document.querySelectorAll('.queue-status.pending, .queue-status.fetching').forEach(el => {
+    el.className = 'queue-status error';
+    el.textContent = '— paused (click RESUME)';
+  });
+  setTimeout(() => { btn.textContent = '⚡ RUN ALL'; btn.style.color = ''; }, 4000);
+}
+
+
+// Wait until all sims in a chunk are complete (poll every 10s, timeout 15min)
+async function waitForChunkSims(entryIds) {
+  const maxWait = 900000; // 15 minutes
+  const pollInterval = 10000; // 10 seconds
+  const start = Date.now();
+
+  while (Date.now() - start < maxWait) {
+    if (batchStopped) return;
+    await sleep(pollInterval);
+
+    let allDone = true;
+    for (const id of entryIds) {
+      if (!id) continue;
+      const entry = profileHistory.find(e => e.id === id);
+      if (!entry) continue;
+
+      // Check persistent history for links — if we have both links it's submitted
+      // We consider "done" when Raidbots reports complete
+      const pArr = loadPersistentHistory();
+      const pEntry = pArr.find(e => e.id === id);
+
+      // Check job status via worker for both sims
+      const jobsToCheck = [];
+      if (pEntry && pEntry.tierLink) jobsToCheck.push(pEntry.tierLink.split('/').pop());
+      if (pEntry && pEntry.trinketLink) jobsToCheck.push(pEntry.trinketLink.split('/').pop());
+
+      for (const jobId of jobsToCheck) {
+        try {
+          const r = await fetch('https://winter-mode-c018.drolcpusj.workers.dev/job/' + jobId);
+          const d = await r.json();
+          const job = d.job || d;
+          const status = job.state || job.status;
+          if (status !== 'complete' && status !== 'finished' && status !== 'failed' && status !== 'error') {
+            allDone = false;
+          }
+        } catch(e) { /* ignore */ }
+        if (batchStopped) return;
+      }
+    }
+
+    if (allDone) return;
   }
 }
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+// ── ILVL OVERRIDE ────────────────────────────────────────────────────────────
+
+function toggleIlevelInput() {
+  const checked = document.getElementById('ilevelOverrideCheck').checked;
+  document.getElementById('ilevelOverrideVal').style.display = checked ? 'inline-block' : 'none';
+  document.getElementById('ilevelOverrideLabel').style.display = checked ? 'inline' : 'none';
+}
+
+function applyIlevelOverride(input) {
+  const ilevelCheckEl = document.getElementById('ilevelOverrideCheck');
+  // Strict check — must be explicitly checked
+  if (!ilevelCheckEl) return input;
+  if (ilevelCheckEl.checked !== true) return input;
+  const ilevelValEl = document.getElementById('ilevelOverrideVal');
+  const ilvl = ilevelValEl ? parseInt(ilevelValEl.value) : 0;
+  if (!ilvl || ilvl < 1) return input;
+  console.log('[ilvl override] applying ilevel=' + ilvl);
+  const gearSlots = /^(head|neck|shoulder|back|chest|wrist|hands|waist|legs|feet|finger1|finger2|main_hand|off_hand)=/i;
+  return input.split('\n').map(line => {
+    const trimmed = line.trim();
+    if (gearSlots.test(trimmed)) {
+      if (/ilevel=\d+/.test(trimmed)) {
+        // Replace existing ilevel
+        return line.replace(/ilevel=\d+/g, 'ilevel=' + ilvl);
+      } else {
+        // No ilevel= present — append it before end of line
+        return line.trimEnd() + ',ilevel=' + ilvl;
+      }
+    }
+    return line;
+  }).join('\n');
+}
+
+
+function applyFightDuration(lines) {
+  const sec = parseInt(document.getElementById('fightDuration') && document.getElementById('fightDuration').value) || 300;
+  if (sec === 300) return lines; // default, no change needed unless already set differently
+  let found = false;
+  const result = lines.map(line => {
+    if (/^max_time\s*=/i.test(line.trim())) {
+      found = true;
+      return 'max_time=' + sec;
+    }
+    return line;
+  });
+  if (!found) {
+    // Insert after first non-comment, non-empty line (after class line)
+    result.push('max_time=' + sec);
+  }
+  return result;
+}
+
+
+// ── LOCK TRINKET DROPDOWN ────────────────────────────────────────────────────
+
+function parseTrinketList(statType) {
+  if (!statType || !TRINKETS[statType]) return [];
+  const block = TRINKETS[statType];
+  const results = [];
+  const lines = block.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    const nameMatch = line.match(/^copy="([^"]+)"/);
+    if (nameMatch && i + 1 < lines.length) {
+      const trinketLine = lines[i + 1].trim();
+      const idMatch = trinketLine.match(/id=(\d+)/);
+      const ilvlMatch = trinketLine.match(/ilevel=(\d+)/);
+      if (idMatch) {
+        results.push({
+          name: nameMatch[1],
+          id: idMatch[1],
+          ilevel: ilvlMatch ? ilvlMatch[1] : '?',
+          line: trinketLine
+        });
+      }
+    }
+  }
+  return results;
+}
+
+function populateLockDropdown(statType) {
+  const sel = document.getElementById('lockTrinketSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="none">None</option>';
+
+  // Always show all three stat groups, highlight the detected one first
+  const order = statType
+    ? [statType, ...['str','agi','int'].filter(s => s !== statType)]
+    : ['str','agi','int'];
+
+  const labels = { str: 'STRENGTH', agi: 'AGILITY', int: 'INTELLECT' };
+
+  order.forEach(function(st) {
+    const trinkets = parseTrinketList(st);
+    if (!trinkets.length) return;
+    const group = document.createElement('optgroup');
+    group.label = labels[st] || st.toUpperCase();
+    trinkets.forEach(function(t) {
+      const opt = document.createElement('option');
+      opt.value = t.id + ':' + t.ilevel + ':' + t.line;
+      opt.textContent = t.name;
+      group.appendChild(opt);
+    });
+    sel.appendChild(group);
+  });
+}
+
+function getLockTrinketLine() {
+  const sel = document.getElementById('lockTrinketSelect');
+  if (!sel || sel.value === 'none') return null;
+  // value format: "id:ilevel:full_trinket_line"
+  const parts = sel.value.split(':');
+  // Reconstruct the trinket line (everything after id:ilevel:)
+  return sel.value.split(':').slice(2).join(':');
 }
 
 // ── URL FETCH ────────────────────────────────────────────────────────────────
@@ -1724,8 +2141,7 @@ async function fetchFromUrl() {
   // Strip anything after the ID (trailing slashes etc)
   reportId = reportId.replace(/[^a-zA-Z0-9]/g, '');
 
-  const directUrl = 'https://www.raidbots.com/simbot/report/' + reportId + '/input.txt';
-  const fetchUrl = 'https://corsproxy.io/?' + encodeURIComponent(directUrl);
+  const fetchUrl = 'https://winter-mode-c018.drolcpusj.workers.dev/input/' + reportId;
 
   try {
     const resp = await fetch(fetchUrl);
@@ -1831,7 +2247,8 @@ async function runSim(id, type, btn) {
       body: JSON.stringify({
         type: 'advanced',
         text: '',
-        advancedInput: simText
+        advancedInput: simText,
+        simcVersion: 'nightly'
       })
     });
 
@@ -1902,30 +2319,227 @@ async function pollSim(jobId, resultEl, type, entryId) {
 
 
 function autoRunSim(id, type) {
-  // Find the button on the card
+  // Directly call runSim logic without needing DOM button
+  const raidsid = localStorage.getItem('raidsid');
+  if (!raidsid) return;
+
+  var entry = null;
+  for (var i = 0; i < profileHistory.length; i++) {
+    if (profileHistory[i].id === id) { entry = profileHistory[i]; break; }
+  }
+  if (!entry) return;
+
+  const simText = type === 'tier' ? entry.tierOutput : entry.trinketOutput;
+  if (!simText) return;
+
+  // Find or create result element on card
   const cards = document.querySelectorAll('.card');
+  let resultEl = null;
   for (var i = 0; i < cards.length; i++) {
     if (parseInt(cards[i].getAttribute('data-id')) === id) {
-      const btns = cards[i].querySelectorAll('.card-btn-runsim');
-      for (var j = 0; j < btns.length; j++) {
-        if ((type === 'tier' && btns[j].textContent === 'RUN TIER') ||
-            (type === 'trinket' && btns[j].textContent === 'RUN TRK')) {
-          btns[j].click();
-          return;
-        }
+      resultEl = cards[i].querySelector('.card-sim-result-' + type);
+      if (!resultEl) {
+        resultEl = document.createElement('div');
+        resultEl.className = 'card-sim-result pending card-sim-result-' + type;
+        cards[i].querySelector('.card-info').appendChild(resultEl);
       }
+      // Disable the run button
+      const btns = cards[i].querySelectorAll('.card-btn-runsim');
+      btns.forEach(b => { b.disabled = true; b.textContent = 'QUEUED'; });
+      break;
     }
   }
+
+  if (!resultEl) {
+    resultEl = document.createElement('div');
+    resultEl.className = 'card-sim-result pending card-sim-result-' + type;
+  }
+
+  resultEl.textContent = '⏳ Submitting...';
+
+  fetch('https://winter-mode-c018.drolcpusj.workers.dev/sim', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Raidsid': raidsid,
+    },
+    body: JSON.stringify({ type: 'advanced', text: '', advancedInput: simText, simcVersion: 'nightly' })
+  })
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(data => {
+    const jobId = data.job && data.job.id ? data.job.id : (data.simId || data.id);
+    if (!jobId) throw new Error('No job ID');
+    const url = 'https://www.raidbots.com/simbot/report/' + jobId;
+    resultEl.innerHTML = (type === 'tier' ? '🟠 ' : '🟢 ') + '<a href="' + url + '" target="_blank">Running... ' + jobId + '</a>';
+    resultEl.className = 'card-sim-result card-sim-result-' + type;
+    updatePersistentLink(id, type, url);
+    pollSim(jobId, resultEl, type, id);
+  })
+  .catch(err => {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'card-sim-result error card-sim-result-' + type;
+    console.error('autoRunSim error:', err);
+  });
 }
 
+
+
+
+// ── FIXED SPEC ROSTER ────────────────────────────────────────────────────────
+
+// Map SimC addon spec names → our fixed spec display names
+function getDisplaySpec(cls, spec) {
+  if (!spec) return spec;
+  const key = spec.toLowerCase().trim();
+  const clsKey = (cls || '').toLowerCase().trim();
+
+  // Ambiguous specs — need class to distinguish
+  if (key === 'frost') {
+    if (clsKey.includes('death') || clsKey === 'deathknight' || clsKey === 'death_knight') return 'Frost (DK)';
+    return 'Frost'; // mage
+  }
+  if (key === 'shadow') return 'Shadow'; // priest
+  if (key === 'elemental') return 'Elemental'; // shaman
+  if (key === 'devastation') return 'Devastation'; // evoker
+  if (key === 'devourer') return 'Devourer'; // DH
+  if (key === 'havoc') return 'Havoc'; // DH
+  if (key === 'balance') return 'Boomie';
+  if (key === 'brewmaster') return 'BrM';
+  if (key === 'windwalker') return 'Windwalker';
+  if (key === 'destruction') return 'Destruction';
+  if (key === 'affliction') return 'Affliction';
+  if (key === 'demonology') return 'Demonology';
+  if (key === 'fire') return 'Fire';
+  if (key === 'arcane') return 'Arcane';
+  if (key === 'subtlety') return 'Subtlety';
+  if (key === 'marksmanship') return 'MM';
+  if (key === 'fury') return 'Fury';
+  if (key === 'blood') return 'Blood';
+  if (key === 'unholy') return 'Unholy';
+  if (key === 'augmentation') return 'Augmentation';
+
+  return spec; // fallback to raw spec name
+}
+
+
+const FIXED_SPECS = [
+  'Blood', 'BrM', 'Unholy', 'Frost (DK)',
+  'Fury', 'Windwalker', 'Havoc', 'Subtlety', 'MM',
+  'Elemental', 'Devastation', 'Devourer',
+  'Boomie', 'Destruction', 'Affliction', 'Demonology',
+  'Shadow', 'Fire', 'Frost', 'Arcane'
+];
+
+// Map spec name (lowercase) to stat type for the fixed table
+const SPEC_STAT_MAP = {
+  'blood': 'str', 'brm': 'agi', 'unholy': 'str', 'frost (dk)': 'str',
+  'fury': 'str', 'windwalker': 'agi', 'havoc': 'agi', 'subtlety': 'agi', 'mm': 'agi',
+  'elemental': 'int', 'devastation': 'int', 'devourer': 'int',
+  'boomie': 'int', 'destruction': 'int', 'affliction': 'int', 'demonology': 'int',
+  'shadow': 'int', 'fire': 'int', 'frost': 'int', 'arcane': 'int'
+};
+
+// ── EXPORT ───────────────────────────────────────────────────────────────────
+
+function exportCSV() {
+  const arr = loadPersistentHistory();
+  if (arr.length === 0) { alert('No history to export!'); return; }
+
+  const bySpec = {};
+  arr.forEach(function(e) { bySpec[normalizeSpec(e.spec)] = e; });
+
+  const rows = [['Spec', 'Name', 'Class', 'Stat', 'Tier Sim', 'Trinket Sim', 'Date']];
+  FIXED_SPECS.forEach(function(specName) {
+    const e = bySpec[normalizeSpec(specName)];
+    rows.push([
+      specName,
+      e ? (e.charName || '') : '',
+      e ? (e.cls || '') : '',
+      e ? (e.statType ? e.statType.toUpperCase() : '') : (SPEC_STAT_MAP[normalizeSpec(specName)] || '').toUpperCase(),
+      e ? (e.tierLink || '') : '',
+      e ? (e.trinketLink || '') : '',
+      e ? (e.date || '') : ''
+    ]);
+  });
+
+  const csv = rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'simc-history-' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function copyTableTSV() {
+  const arr = loadPersistentHistory();
+  if (arr.length === 0) { alert('No history to copy!'); return; }
+
+  const bySpec2 = {};
+  arr.forEach(function(e) { bySpec2[normalizeSpec(e.spec)] = e; });
+
+  const rows = [['Spec', 'Name', 'Class', 'Stat', 'Tier Sim', 'Trinket Sim', 'Date']];
+  FIXED_SPECS.forEach(function(specName) {
+    const e = bySpec2[normalizeSpec(specName)];
+    rows.push([
+      specName,
+      e ? (e.charName || '') : '',
+      e ? (e.cls || '') : '',
+      e ? (e.statType ? e.statType.toUpperCase() : '') : (SPEC_STAT_MAP[normalizeSpec(specName)] || '').toUpperCase(),
+      e ? (e.tierLink || '') : '',
+      e ? (e.trinketLink || '') : '',
+      e ? (e.date || '') : ''
+    ]);
+  });
+
+  const tsv = rows.map(r => r.join('\t')).join('\n');
+  var ta = document.createElement('textarea');
+  ta.value = tsv;
+  ta.style.position = 'fixed'; ta.style.top = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+
+  const btn = document.querySelector('.btn-primary[onclick="copyTableTSV()"]');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓ COPIED!';
+    setTimeout(function() { btn.textContent = orig; }, 1500);
+  }
+}
 
 // ── PERSISTENT HISTORY (localStorage) ───────────────────────────────────────
 
 const STORAGE_KEY = 'simc_persistent_history';
 
+// Raw SimC spec names that need remapping to display names
+const RAW_SPEC_REMAP = {
+  'balance': 'Boomie',
+  'brewmaster': 'BrM',
+  'marksmanship': 'MM',
+};
+
 function loadPersistentHistory() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    // Migrate: only remap known raw SimC names that differ from display names
+    let changed = false;
+    const migrated = arr.map(function(e) {
+      if (e.spec) {
+        const key = e.spec.toLowerCase().trim();
+        if (RAW_SPEC_REMAP[key]) {
+          e.spec = RAW_SPEC_REMAP[key];
+          changed = true;
+        }
+      }
+      return e;
+    });
+    if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+    return migrated;
   } catch(e) { return []; }
 }
 
@@ -1933,12 +2547,29 @@ function savePersistentHistory(arr) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch(e) {}
 }
 
+function normalizeSpec(s) {
+  if (!s) return '';
+  return s.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
 function addToPersistentHistory(entry) {
   const arr = loadPersistentHistory();
-  // Update if same id exists (to update sim links), else prepend
-  const idx = arr.findIndex(e => e.id === entry.id);
-  if (idx >= 0) arr[idx] = entry;
-  else arr.unshift(entry);
+  // Match by spec (normalized) — one entry per spec
+  const entrySpecNorm = normalizeSpec(entry.spec);
+  const idx = arr.findIndex(e => {
+    if (normalizeSpec(e.spec) === entrySpecNorm) return true;
+    // Check legacy raw spec remap
+    const remapped = RAW_SPEC_REMAP[(e.spec || '').toLowerCase().trim()];
+    if (remapped && normalizeSpec(remapped) === entrySpecNorm) return true;
+    return false;
+  });
+  if (idx >= 0) {
+    entry.tierLink = entry.tierLink || arr[idx].tierLink;
+    entry.trinketLink = entry.trinketLink || arr[idx].trinketLink;
+    arr[idx] = entry;
+  } else {
+    arr.unshift(entry);
+  }
   savePersistentHistory(arr);
   renderPersistentHistory();
 }
@@ -1971,89 +2602,125 @@ function renderPersistentHistory() {
   if (!grid) return;
 
   const arr = loadPersistentHistory();
-  countEl.textContent = arr.length + ' profile' + (arr.length !== 1 ? 's' : '');
+  // Build lookup by normalized spec
+  const bySpec = {};
+  arr.forEach(function(e) { bySpec[normalizeSpec(e.spec)] = e; });
 
-  if (arr.length === 0) {
-    grid.innerHTML = '<div class="hist-empty-msg">No history yet — process characters to build history here.</div>';
-    return;
-  }
+  const filled = FIXED_SPECS.filter(s => bySpec[normalizeSpec(s)]).length;
+  countEl.textContent = filled + ' / ' + FIXED_SPECS.length + ' specs filled';
 
-  grid.innerHTML = '';
-  arr.forEach(function(entry) {
-    const dotClass = entry.statType ? 'dot-' + entry.statType : 'dot-none';
-    const statLabel = entry.statType ? entry.statType.toUpperCase() : '?';
+  const table = document.createElement('table');
+  table.className = 'hist-table';
 
-    const card = document.createElement('div');
-    card.className = 'hist-card';
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr>' +
+    '<th>SPEC</th>' +
+    '<th>NAME</th>' +
+    '<th>STAT</th>' +
+    '<th>TIER SIM</th>' +
+    '<th>TRINKET SIM</th>' +
+    '<th>UPDATED</th>' +
+    '<th></th>' +
+    '</tr>';
+  table.appendChild(thead);
 
-    const delBtn = document.createElement('button');
-    delBtn.className = 'hist-card-del';
-    delBtn.textContent = '×';
-    delBtn.addEventListener('click', function() { deletePersistentEntry(entry.id); });
+  const tbody = document.createElement('tbody');
 
-    const top = document.createElement('div');
-    top.className = 'hist-card-top';
-    top.innerHTML = '<div class="card-stat-dot ' + dotClass + '"></div>' +
-      '<div class="hist-card-name">' + entry.charName + '</div>' +
-      '<span class="badge badge-' + (entry.statType||'none') + '" style="font-size:9px;padding:2px 6px;">' + statLabel + '</span>';
+  FIXED_SPECS.forEach(function(specName) {
+    const entry = bySpec[normalizeSpec(specName)];
+    const statType = entry ? entry.statType : SPEC_STAT_MAP[normalizeSpec(specName)];
+    const dotClass = statType ? 'dot-' + statType : 'dot-none';
+    const statLabel = statType ? statType.toUpperCase() : '?';
 
-    const meta = document.createElement('div');
-    meta.className = 'hist-card-meta';
-    meta.innerHTML = '<span class="spec-tag">' + entry.spec + '</span> · ' + entry.cls + ' · ' + entry.date;
+    const tr = document.createElement('tr');
+    if (!entry) tr.style.opacity = '0.45';
 
-    const links = document.createElement('div');
-    links.className = 'hist-links';
+    // Spec cell
+    const specTd = document.createElement('td');
+    specTd.className = 'td-name';
+    specTd.innerHTML = '<span class="card-stat-dot ' + dotClass + '" style="display:inline-block;margin-right:6px;vertical-align:middle;"></span>' + specName;
 
-    // Tier link row
-    const tierRow = document.createElement('div');
-    tierRow.className = 'hist-link hist-link-tier';
-    if (entry.tierLink) {
+    // Name cell
+    const nameTd = document.createElement('td');
+    nameTd.className = 'td-spec';
+    nameTd.textContent = entry ? entry.charName : '—';
+
+    // Stat cell
+    const statTd = document.createElement('td');
+    statTd.innerHTML = '<span class="badge badge-' + (statType||'none') + '" style="font-size:9px;padding:2px 6px;">' + statLabel + '</span>';
+
+    // Tier link cell
+    const tierTd = document.createElement('td');
+    tierTd.className = 'td-link';
+    if (entry && entry.tierLink) {
       const a = document.createElement('a');
       a.href = entry.tierLink;
       a.target = '_blank';
-      a.textContent = '🟠 TIER → VIEW REPORT';
-      const copyBtn = document.createElement('button');
-      copyBtn.className = 'copy-link-btn';
-      copyBtn.textContent = 'COPY';
-      copyBtn.addEventListener('click', function() { copyText(entry.tierLink, copyBtn); });
-      tierRow.appendChild(a);
-      tierRow.appendChild(copyBtn);
+      a.style.color = 'var(--accent2)';
+      a.textContent = entry.tierLink.split('/').pop();
+      const cp = document.createElement('button');
+      cp.className = 'copy-link-btn';
+      cp.textContent = 'COPY';
+      cp.addEventListener('click', function() { copyText(entry.tierLink, cp); });
+      tierTd.appendChild(a);
+      tierTd.appendChild(cp);
     } else {
-      const span = document.createElement('span');
-      span.className = 'hist-link-pending';
-      span.textContent = '🟠 TIER — not submitted';
-      tierRow.appendChild(span);
+      tierTd.innerHTML = '<span class="td-pending">—</span>';
     }
 
-    // Trinket link row
-    const trkRow = document.createElement('div');
-    trkRow.className = 'hist-link hist-link-trinket';
-    if (entry.trinketLink) {
+    // Trinket link cell
+    const trkTd = document.createElement('td');
+    trkTd.className = 'td-link';
+    if (entry && entry.trinketLink) {
       const a = document.createElement('a');
       a.href = entry.trinketLink;
       a.target = '_blank';
-      a.textContent = '🟢 TRINKETS → VIEW REPORT';
-      const copyBtn = document.createElement('button');
-      copyBtn.className = 'copy-link-btn';
-      copyBtn.textContent = 'COPY';
-      copyBtn.addEventListener('click', function() { copyText(entry.trinketLink, copyBtn); });
-      trkRow.appendChild(a);
-      trkRow.appendChild(copyBtn);
+      a.style.color = 'var(--accent3)';
+      a.textContent = entry.trinketLink.split('/').pop();
+      const cp = document.createElement('button');
+      cp.className = 'copy-link-btn';
+      cp.textContent = 'COPY';
+      cp.addEventListener('click', function() { copyText(entry.trinketLink, cp); });
+      trkTd.appendChild(a);
+      trkTd.appendChild(cp);
     } else {
-      const span = document.createElement('span');
-      span.className = 'hist-link-pending';
-      span.textContent = '🟢 TRINKETS — not submitted';
-      trkRow.appendChild(span);
+      trkTd.innerHTML = '<span class="td-pending">—</span>';
     }
 
-    links.appendChild(tierRow);
-    links.appendChild(trkRow);
-    card.appendChild(delBtn);
-    card.appendChild(top);
-    card.appendChild(meta);
-    card.appendChild(links);
-    grid.appendChild(card);
+    // Date cell
+    const dateTd = document.createElement('td');
+    dateTd.className = 'td-spec';
+    dateTd.style.fontSize = '10px';
+    dateTd.textContent = entry ? entry.date : '';
+
+    // Delete cell
+    const delTd = document.createElement('td');
+    delTd.className = 'td-del';
+    if (entry) {
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '×';
+      delBtn.addEventListener('click', function() { deletePersistentEntry(entry.id); });
+      delTd.appendChild(delBtn);
+    }
+
+    tr.appendChild(specTd);
+    tr.appendChild(nameTd);
+    tr.appendChild(statTd);
+    tr.appendChild(tierTd);
+    tr.appendChild(trkTd);
+    tr.appendChild(dateTd);
+    tr.appendChild(delTd);
+    tbody.appendChild(tr);
   });
+
+  table.appendChild(tbody);
+  grid.innerHTML = '';
+  grid.appendChild(table);
+
+  const hint = document.createElement('div');
+  hint.className = 'hist-copy-all';
+  hint.innerHTML = '💡 Use <b>📋 COPY TABLE</b> above to copy as TSV and paste directly into Excel/Sheets';
+  grid.appendChild(hint);
 }
 
 function copyText(text, btn) {
@@ -2079,7 +2746,7 @@ function switchMainTab(tab) {
   if (tab === 'history') renderPersistentHistory();
 }
 
-document.addEventListener('DOMContentLoaded', function() { loadRaidsid(); renderPersistentHistory(); });
+document.addEventListener('DOMContentLoaded', function() { loadRaidsid(); renderPersistentHistory(); populateLockDropdown(null); });
 
 </script>
 
@@ -2091,6 +2758,8 @@ document.addEventListener('DOMContentLoaded', function() { loadRaidsid(); render
     <div class="hist-page-title"><span>//</span> COMPLETE SIM HISTORY</div>
     <div style="display:flex;gap:10px;align-items:center;">
       <span class="hist-count" id="histPageCount">0 profiles</span>
+      <button class="btn btn-green" onclick="exportCSV()" style="font-size:11px;padding:4px 12px;">⬇ EXPORT CSV</button>
+      <button class="btn btn-primary" onclick="copyTableTSV()" style="font-size:11px;padding:4px 12px;">📋 COPY TABLE</button>
       <button class="btn btn-muted" onclick="clearPersistentHistory()" style="font-size:11px;padding:4px 12px;">CLEAR ALL</button>
     </div>
   </div>
